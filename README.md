@@ -41,13 +41,36 @@ philosophy: free/open-source stack, static deploy, no backend.
   - Text position, gaps, tick marks and line weights follow NBR 6492 conventions
     (text above/left of the line, 2mm leader gap, 3mm text height, etc.).
   - Any dimension's text can be overridden, and its offset dragged to reposition.
+- **Annotations**: leader callouts, circled sequential numbering, a dashed level
+  reference line, and a detail-reference callout (marks an area and points a label
+  at it — see PLANNING.md for how this differs from a real zoomed detail view).
+- **Title block** on every sheet — project name/client/author set once, per-sheet
+  title/date/revision edited by clicking the field directly; scale and sheet
+  number are always derived automatically, never typed by hand.
+- **Undo/redo** (toolbar buttons or Ctrl+Z / Ctrl+Shift+Z) across every edit.
+- **Autosave** to the browser's local IndexedDB — close the tab, come back later,
+  your project is still there.
+- **Export**: a vector PDF (one ISO-sized page per sheet, via jsPDF + svg2pdf.js),
+  or a portable `.zip` project file (vector data + real images) for backup,
+  version control, or moving to another machine.
 
 ## Status
 
-Early, functional MVP — the core drawing/dimensioning loop works end to end. There is
-no save/reload yet: closing the tab loses your work. See [PLANNING.md](./PLANNING.md)
-for the architecture and what's planned next (local auto-save + a portable project
-file you can back up or move between machines).
+Functional MVP with a full local workflow: draw, dimension, annotate, and export —
+with autosave so you never lose work, and undo/redo throughout. See
+[PLANNING.md](./PLANNING.md) for the full architecture and what's next (angular/
+radius dimensions, layers, multiple viewports per sheet, a proper title-block
+editor).
+
+## Testing
+
+End-to-end tests (Playwright) cover sheet CRUD, import + calibration, both
+dimensioning modes, all four annotation tools, undo/redo, and persistence
+(autosave/resume, PDF/zip export):
+
+```bash
+npm run test:e2e
+```
 
 ## Development
 

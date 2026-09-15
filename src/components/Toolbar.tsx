@@ -2,7 +2,20 @@ import { useState } from 'react'
 import { useProjectStore } from '../state/projectStore'
 import { SHEET_SIZE_KEYS } from '../lib/isoSizes'
 import type { Orientation, SheetSizeKey } from '../types'
-import { AlignedIcon, CalibrateIcon, CotaIcon, FitIcon, OrthoIcon, SelectIcon } from './icons'
+import {
+  AlignedIcon,
+  CalibrateIcon,
+  CalloutIcon,
+  CotaIcon,
+  FitIcon,
+  LeaderIcon,
+  LevelIcon,
+  MarkerIcon,
+  OrthoIcon,
+  RedoIcon,
+  SelectIcon,
+  UndoIcon,
+} from './icons'
 
 interface Props {
   onAddSheet: (size: SheetSizeKey, orientation: Orientation) => void
@@ -11,16 +24,36 @@ interface Props {
   onZoomIn: () => void
   onZoomOut: () => void
   zoomPercent: number
+  onEditProject: () => void
+  onExportPdf: () => void
+  onExportProject: () => void
+  onImportProjectClick: () => void
 }
 
-export function Toolbar({ onAddSheet, onImportClick, onFit, onZoomIn, onZoomOut, zoomPercent }: Props) {
+export function Toolbar({
+  onAddSheet,
+  onImportClick,
+  onFit,
+  onZoomIn,
+  onZoomOut,
+  zoomPercent,
+  onEditProject,
+  onExportPdf,
+  onExportProject,
+  onImportProjectClick,
+}: Props) {
   const tool = useProjectStore((s) => s.tool)
   const dimMode = useProjectStore((s) => s.dimMode)
   const dimUnit = useProjectStore((s) => s.dimUnit)
   const selection = useProjectStore((s) => s.selection)
+  const sheets = useProjectStore((s) => s.sheets)
+  const past = useProjectStore((s) => s.past)
+  const future = useProjectStore((s) => s.future)
   const setTool = useProjectStore((s) => s.setTool)
   const setDimMode = useProjectStore((s) => s.setDimMode)
   const setDimUnit = useProjectStore((s) => s.setDimUnit)
+  const undo = useProjectStore((s) => s.undo)
+  const redo = useProjectStore((s) => s.redo)
 
   const [sizeKey, setSizeKey] = useState<SheetSizeKey>('A3')
   const [orientation, setOrientation] = useState<Orientation>('paisagem')
@@ -30,6 +63,17 @@ export function Toolbar({ onAddSheet, onImportClick, onFit, onZoomIn, onZoomOut,
       <div className="brand">
         prancheta<span>·</span>livre
       </div>
+
+      <div className="grp">
+        <button className="tool" title="Desfazer (Ctrl+Z)" disabled={!past.length} onClick={undo}>
+          <UndoIcon />
+        </button>
+        <button className="tool" title="Refazer (Ctrl+Shift+Z)" disabled={!future.length} onClick={redo}>
+          <RedoIcon />
+        </button>
+      </div>
+
+      <div className="sep" />
 
       <div className="grp">
         <button className={'tool' + (tool === 'select' ? ' active' : '')} title="Selecionar (V)" onClick={() => setTool('select')}>
@@ -67,6 +111,25 @@ export function Toolbar({ onAddSheet, onImportClick, onFit, onZoomIn, onZoomOut,
         </div>
       )}
 
+      <div className="grp">
+        <button className={'tool' + (tool === 'leader' ? ' active' : '')} title="Chamada de texto (leader)" onClick={() => setTool('leader')}>
+          <LeaderIcon />
+          Chamada
+        </button>
+        <button className={'tool' + (tool === 'marker' ? ' active' : '')} title="Numeração circulada" onClick={() => setTool('marker')}>
+          <MarkerIcon />
+          Numeração
+        </button>
+        <button className={'tool' + (tool === 'level' ? ' active' : '')} title="Linha de referência de nível" onClick={() => setTool('level')}>
+          <LevelIcon />
+          Nível
+        </button>
+        <button className={'tool' + (tool === 'callout' ? ' active' : '')} title="Chamada de detalhe (referência a outra vista)" onClick={() => setTool('callout')}>
+          <CalloutIcon />
+          Detalhe
+        </button>
+      </div>
+
       <div className="sep" />
 
       <select className="sheetsize" value={sizeKey} onChange={(e) => setSizeKey(e.target.value as SheetSizeKey)}>
@@ -97,6 +160,21 @@ export function Toolbar({ onAddSheet, onImportClick, onFit, onZoomIn, onZoomOut,
           mm
         </button>
       </div>
+
+      <div className="sep" />
+
+      <button className="ghost" onClick={onEditProject}>
+        Projeto
+      </button>
+      <button className="ghost" disabled={!sheets.length} onClick={onExportPdf}>
+        Exportar PDF
+      </button>
+      <button className="ghost" disabled={!sheets.length} onClick={onExportProject}>
+        Exportar projeto
+      </button>
+      <button className="ghost" onClick={onImportProjectClick}>
+        Importar projeto
+      </button>
 
       <div className="spacer" />
 

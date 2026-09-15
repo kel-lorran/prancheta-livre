@@ -65,3 +65,52 @@ export function FitIcon() {
     </svg>
   )
 }
+
+export function UndoIcon() {
+  return (
+    <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M4 8h9a4 4 0 0 1 0 8h-3M4 8l4-4M4 8l4 4" />
+    </svg>
+  )
+}
+export function RedoIcon() {
+  return (
+    <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M16 8H7a4 4 0 0 0 0 8h3M16 8l-4-4M16 8l-4 4" />
+    </svg>
+  )
+}
+export function LeaderIcon() {
+  return (
+    <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="4.5" cy="15.5" r="1.3" fill="currentColor" stroke="none" />
+      <path d="M5.5 14.5 12 8" />
+      <path d="M12 8h5" />
+    </svg>
+  )
+}
+export function MarkerIcon() {
+  return (
+    <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5">
+      <circle cx="10" cy="10" r="6.5" />
+      <text x="10" y="13" fontSize="8" textAnchor="middle" fill="currentColor" stroke="none" fontFamily="sans-serif">1</text>
+    </svg>
+  )
+}
+export function LevelIcon() {
+  return (
+    <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
+      <path d="M3 13h14" strokeDasharray="2.4,1.6" />
+      <path d="M3 9v8" />
+    </svg>
+  )
+}
+export function CalloutIcon() {
+  return (
+    <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="2.5" y="3" width="7" height="6" strokeDasharray="1.8,1.4" />
+      <path d="M9.5 6l4 4.5M9.5 9l4 1.5" />
+      <circle cx="15" cy="12" r="1.3" fill="currentColor" stroke="none" />
+    </svg>
+  )
+}

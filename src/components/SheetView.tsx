@@ -1,9 +1,22 @@
 import type React from 'react'
 import { dimGeometry } from '../lib/dimGeometry'
-import type { CalState, CotaState, DimGeometryMode, Selection, Sheet, ToolName } from '../types'
+import type { CalState, CotaState, DimGeometryMode, DraftState, ProjectInfo, Selection, Sheet, ToolName } from '../types'
 import { DimensionView } from './DimensionView'
+import { AnnotationView } from './AnnotationView'
+import { TitleBlock } from './TitleBlock'
 
 export type Corner = 'nw' | 'ne' | 'sw' | 'se'
+
+export interface SheetHandlers {
+  onImagePointerDown: (e: React.PointerEvent, sheet: Sheet) => void
+  onHandlePointerDown: (e: React.PointerEvent, sheet: Sheet, corner: Corner) => void
+  onDimPointerDown: (e: React.PointerEvent, sheet: Sheet, dimId: string) => void
+  onDimDoubleClick: (e: React.MouseEvent, sheet: Sheet, dimId: string) => void
+  onAnnotationPrimaryDown: (e: React.PointerEvent, sheet: Sheet, annId: string) => void
+  onAnnotationSecondaryDown: (e: React.PointerEvent, sheet: Sheet, annId: string) => void
+  onAnnotationDoubleClick: (e: React.MouseEvent, sheet: Sheet, annId: string) => void
+  onTitleBlockEdit: (e: React.MouseEvent, sheet: Sheet, field: 'sheetTitle' | 'date' | 'revision', current: string) => void
+}
 
 interface Props {
   sheet: Sheet
@@ -11,20 +24,22 @@ interface Props {
   selection: Selection
   cota: CotaState
   cal: CalState
-  onImagePointerDown: (e: React.PointerEvent, sheet: Sheet) => void
-  onHandlePointerDown: (e: React.PointerEvent, sheet: Sheet, corner: Corner) => void
-  onDimPointerDown: (e: React.PointerEvent, sheet: Sheet, dimId: string) => void
-  onDimDoubleClick: (e: React.MouseEvent, sheet: Sheet, dimId: string) => void
+  draft: DraftState
+  project: ProjectInfo
+  sheetNumber: number
+  sheetTotal: number
+  handlers: SheetHandlers
 }
 
-export function SheetView({ sheet, tool, selection, cota, cal, onImagePointerDown, onHandlePointerDown, onDimPointerDown, onDimDoubleClick }: Props) {
+export function SheetView({ sheet, tool, selection, cota, cal, draft, project, sheetNumber, sheetTotal, handlers }: Props) {
   const clipId = `clip-${sheet.id}`
   const isSheetSelected = selection.type === 'sheet' && selection.id === sheet.id
   const isImageSelected = selection.type === 'image' && selection.id === sheet.id
   const im = sheet.image
+  let markerIndex = -1
 
   return (
-    <g transform={`translate(${sheet.x} ${sheet.y})`}>
+    <g transform={`translate(${sheet.x} ${sheet.y})`} data-testid="sheet-group" data-sheet-id={sheet.id}>
       <defs>
         <clipPath id={clipId}>
           <rect x={0} y={0} width={sheet.w} height={sheet.h} />
@@ -41,6 +56,7 @@ export function SheetView({ sheet, tool, selection, cota, cal, onImagePointerDow
         strokeWidth={isSheetSelected ? 0.9 : 0.5}
         vectorEffect="non-scaling-stroke"
         style={{ filter: 'drop-shadow(0 1px 6px rgba(0,0,0,.18))', cursor: tool === 'select' ? undefined : 'crosshair' }}
+        data-testid="sheet-paper"
       />
 
       <g clipPath={`url(#${clipId})`}>
@@ -54,7 +70,7 @@ export function SheetView({ sheet, tool, selection, cota, cal, onImagePointerDow
               height={im.h}
               preserveAspectRatio="none"
               style={{ cursor: tool === 'select' ? 'move' : 'crosshair' }}
-              onPointerDown={(e) => onImagePointerDown(e, sheet)}
+              onPointerDown={(e) => handlers.onImagePointerDown(e, sheet)}
             />
             {isImageSelected && (
               <>
@@ -91,7 +107,8 @@ export function SheetView({ sheet, tool, selection, cota, cal, onImagePointerDow
                         strokeWidth={0.6}
                         vectorEffect="non-scaling-stroke"
                         style={{ cursor: corner === 'nw' || corner === 'se' ? 'nwse-resize' : 'nesw-resize' }}
-                        onPointerDown={(e) => onHandlePointerDown(e, sheet, corner)}
+                        data-corner={corner}
+                        onPointerDown={(e) => handlers.onHandlePointerDown(e, sheet, corner)}
                       />
                     )
                   })}
@@ -107,14 +124,38 @@ export function SheetView({ sheet, tool, selection, cota, cal, onImagePointerDow
             dim={d}
             realMetersPerMm={im?.realMetersPerMm ?? null}
             selected={selection.type === 'dim' && selection.id === d.id}
-            onPointerDownLine={(e) => onDimPointerDown(e, sheet, d.id)}
-            onDoubleClick={(e) => onDimDoubleClick(e, sheet, d.id)}
+            onPointerDownLine={(e) => handlers.onDimPointerDown(e, sheet, d.id)}
+            onDoubleClick={(e) => handlers.onDimDoubleClick(e, sheet, d.id)}
           />
         ))}
+
+        {sheet.annotations.map((a) => {
+          if (a.kind === 'marker') markerIndex++
+          return (
+            <AnnotationView
+              key={a.id}
+              ann={a}
+              index={a.kind === 'marker' ? markerIndex : 0}
+              selected={selection.type === 'annotation' && selection.id === a.id}
+              onPointerDownPrimary={(e) => handlers.onAnnotationPrimaryDown(e, sheet, a.id)}
+              onPointerDownSecondary={(e) => handlers.onAnnotationSecondaryDown(e, sheet, a.id)}
+              onDoubleClick={(e) => handlers.onAnnotationDoubleClick(e, sheet, a.id)}
+            />
+          )
+        })}
       </g>
+
+      <TitleBlock
+        sheet={sheet}
+        project={project}
+        sheetNumber={sheetNumber}
+        sheetTotal={sheetTotal}
+        onEditField={(e, field, current) => handlers.onTitleBlockEdit(e, sheet, field, current)}
+      />
 
       {tool === 'cota' && cota.sheetId === sheet.id && <CotaPreview cota={cota} />}
       {tool === 'calibrate' && cal.sheetId === sheet.id && <CalPreview cal={cal} />}
+      {draft.sheetId === sheet.id && <DraftPreview draft={draft} />}
     </g>
   )
 }
@@ -160,6 +201,50 @@ function CalPreview({ cal }: { cal: CalState }) {
           vectorEffect="non-scaling-stroke"
         />
       )}
+    </g>
+  )
+}
+
+function DraftPreview({ draft }: { draft: DraftState }) {
+  const [p1, p2] = draft.points
+  const preview = draft.preview
+  if (!p1) return null
+  const col = 'var(--accent)'
+  if (draft.tool === 'leader') {
+    return (
+      <g opacity={0.85}>
+        <circle cx={p1.x} cy={p1.y} r={1} fill={col} />
+        {preview && <line x1={p1.x} y1={p1.y} x2={preview.x} y2={preview.y} stroke={col} strokeWidth={0.35} strokeDasharray="1.2,1" vectorEffect="non-scaling-stroke" />}
+      </g>
+    )
+  }
+  if (draft.tool === 'level') {
+    return (
+      <g opacity={0.85}>
+        <circle cx={p1.x} cy={p1.y} r={1} fill={col} />
+        {preview && (
+          <line x1={p1.x} y1={p1.y} x2={preview.x} y2={p1.y} stroke={col} strokeWidth={0.35} strokeDasharray="4,1.2,1,1.2" vectorEffect="non-scaling-stroke" />
+        )}
+      </g>
+    )
+  }
+  // callout
+  if (!p2) {
+    if (!preview) return null
+    const x = Math.min(p1.x, preview.x)
+    const y = Math.min(p1.y, preview.y)
+    const w = Math.abs(preview.x - p1.x)
+    const h = Math.abs(preview.y - p1.y)
+    return <rect x={x} y={y} width={w} height={h} fill="none" stroke={col} strokeWidth={0.35} strokeDasharray="1.8,1.4" vectorEffect="non-scaling-stroke" opacity={0.85} />
+  }
+  const rx = Math.min(p1.x, p2.x)
+  const ry = Math.min(p1.y, p2.y)
+  const rw = Math.abs(p2.x - p1.x)
+  const rh = Math.abs(p2.y - p1.y)
+  return (
+    <g opacity={0.85}>
+      <rect x={rx} y={ry} width={rw} height={rh} fill="none" stroke={col} strokeWidth={0.35} strokeDasharray="1.8,1.4" vectorEffect="non-scaling-stroke" />
+      {preview && <line x1={rx + rw / 2} y1={ry + rh / 2} x2={preview.x} y2={preview.y} stroke={col} strokeWidth={0.35} strokeDasharray="1.2,1" vectorEffect="non-scaling-stroke" />}
     </g>
   )
 }

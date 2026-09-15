@@ -219,8 +219,7 @@ button.ghost[disabled] {
 #canvasWrap.panning {
   cursor: grabbing;
 }
-#canvasWrap.tool-cota,
-#canvasWrap.tool-calibrate {
+#canvasWrap.tool-draw {
   cursor: crosshair;
 }
 svg#stage {

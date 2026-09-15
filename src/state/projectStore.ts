@@ -1,18 +1,24 @@
 import { create } from 'zustand'
 import { v4 as uuidv4 } from 'uuid'
 import type {
+  Annotation,
   CalState,
   CotaState,
   Dimension,
   DimGeometryMode,
   DimToolMode,
+  DraftState,
+  DraftTool,
   LengthUnit,
+  NewAnnotation,
   Orientation,
   Point,
+  ProjectInfo,
   Selection,
   Sheet,
   SheetImage,
   SheetSizeKey,
+  TitleBlockFields,
   ToolName,
   ViewState,
 } from '../types'
@@ -22,9 +28,16 @@ import { generateSamplePlanDataURL, loadImageSize } from '../lib/samplePlan'
 
 const IDLE_COTA: CotaState = { step: 0, sheetId: null, p1: null, p2: null, resolvedMode: null, previewOffset: null }
 const IDLE_CAL: CalState = { step: 0, sheetId: null, p1: null, preview: null }
+const IDLE_DRAFT: DraftState = { tool: null, sheetId: null, points: [], preview: null }
+const HISTORY_LIMIT = 60
+
+function defaultTitleBlock(): TitleBlockFields {
+  return { sheetTitle: '', date: '', revision: '' }
+}
 
 interface ProjectState {
   sheets: Sheet[]
+  project: ProjectInfo
   selection: Selection
   tool: ToolName
   dimMode: DimToolMode
@@ -32,11 +45,20 @@ interface ProjectState {
   view: ViewState
   cota: CotaState
   cal: CalState
+  draft: DraftState
+  past: Sheet[][]
+  future: Sheet[][]
+
+  commitHistory: () => void
+  undo: () => void
+  redo: () => void
 
   addSheet: (size: SheetSizeKey, orientation: Orientation) => Sheet
   deleteSheet: (id: string) => void
   renameSheet: (id: string, name: string) => void
   setSheetPos: (id: string, x: number, y: number) => void
+  setTitleBlockField: (sheetId: string, field: keyof TitleBlockFields, value: string) => void
+  setProjectInfo: (info: ProjectInfo) => void
 
   setImage: (sheetId: string, image: SheetImage) => void
   setImageRect: (sheetId: string, rect: Partial<Pick<SheetImage, 'x' | 'y' | 'w' | 'h'>>) => void
@@ -48,6 +70,10 @@ interface ProjectState {
   deleteDim: (sheetId: string, dimId: string) => void
   overrideDimText: (sheetId: string, dimId: string, text: string | null) => void
   adjustDimOffset: (sheetId: string, dimId: string, offset: number) => void
+
+  addAnnotation: (sheetId: string, ann: NewAnnotation) => void
+  patchAnnotation: (sheetId: string, id: string, patch: Record<string, unknown>) => void
+  deleteAnnotation: (sheetId: string, id: string) => void
 
   setTool: (tool: ToolName) => void
   setDimMode: (mode: DimToolMode) => void
@@ -63,8 +89,14 @@ interface ProjectState {
   setCalPreview: (pt: Point) => void
   cancelCal: () => void
 
+  startDraft: (tool: DraftTool, sheetId: string, p: Point) => void
+  addDraftPoint: (p: Point) => void
+  setDraftPreview: (p: Point) => void
+  cancelDraft: () => void
+
   setView: (view: ViewState) => void
 
+  loadProject: (sheets: Sheet[], project: ProjectInfo) => void
   seedSample: () => Promise<void>
 }
 
@@ -72,8 +104,13 @@ function resolveDims(size: SheetSizeKey, orientation: Orientation) {
   return sheetDimensions(size, orientation)
 }
 
+function findSheetOf(sheets: Sheet[], annotationId: string): Sheet | undefined {
+  return sheets.find((s) => s.annotations.some((a) => a.id === annotationId))
+}
+
 export const useProjectStore = create<ProjectState>((set, get) => ({
   sheets: [],
+  project: { name: '', client: '', author: '' },
   selection: { type: null, id: null },
   tool: 'select',
   dimMode: 'ortho',
@@ -81,8 +118,28 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
   view: { panX: 80, panY: 60, zoom: 2.6 },
   cota: IDLE_COTA,
   cal: IDLE_CAL,
+  draft: IDLE_DRAFT,
+  past: [],
+  future: [],
+
+  commitHistory() {
+    set((state) => ({ past: [...state.past, state.sheets].slice(-HISTORY_LIMIT), future: [] }))
+  },
+  undo() {
+    const { past, sheets, future } = get()
+    if (!past.length) return
+    const previous = past[past.length - 1]
+    set({ sheets: previous, past: past.slice(0, -1), future: [sheets, ...future].slice(0, HISTORY_LIMIT), selection: { type: null, id: null } })
+  },
+  redo() {
+    const { future, sheets, past } = get()
+    if (!future.length) return
+    const next = future[0]
+    set({ sheets: next, future: future.slice(1), past: [...past, sheets].slice(-HISTORY_LIMIT), selection: { type: null, id: null } })
+  },
 
   addSheet(size, orientation) {
+    get().commitHistory()
     const { w, h } = resolveDims(size, orientation)
     const sheets = get().sheets
     let origin = { x: 0, y: 0 }
@@ -106,12 +163,15 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
       h,
       image: null,
       dims: [],
+      annotations: [],
+      titleBlock: defaultTitleBlock(),
     }
     set((state) => ({ sheets: [...state.sheets, sheet], selection: { type: 'sheet', id: sheet.id } }))
     return sheet
   },
 
   deleteSheet(id) {
+    get().commitHistory()
     set((state) => ({
       sheets: state.sheets.filter((s) => s.id !== id),
       selection: state.selection.id === id ? { type: null, id: null } : state.selection,
@@ -119,6 +179,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
   },
 
   renameSheet(id, name) {
+    get().commitHistory()
     set((state) => ({ sheets: state.sheets.map((s) => (s.id === id ? { ...s, name } : s)) }))
   },
 
@@ -126,7 +187,20 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
     set((state) => ({ sheets: state.sheets.map((s) => (s.id === id ? { ...s, x, y } : s)) }))
   },
 
+  setTitleBlockField(sheetId, field, value) {
+    get().commitHistory()
+    set((state) => ({
+      sheets: state.sheets.map((s) => (s.id === sheetId ? { ...s, titleBlock: { ...s.titleBlock, [field]: value } } : s)),
+    }))
+  },
+
+  setProjectInfo(info) {
+    get().commitHistory()
+    set({ project: info })
+  },
+
   setImage(sheetId, image) {
+    get().commitHistory()
     set((state) => ({ sheets: state.sheets.map((s) => (s.id === sheetId ? { ...s, image, dims: [] } : s)) }))
   },
 
@@ -139,6 +213,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
   calibrateImage(sheetId, anchor, dpaper, meters, denom) {
     const sheet = get().sheets.find((s) => s.id === sheetId)
     if (!sheet || !sheet.image) return { overflow: false }
+    get().commitHistory()
     const im = sheet.image
     const targetPaperMm = (meters * 1000) / denom
     const factor = targetPaperMm / dpaper
@@ -160,6 +235,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
   },
 
   toggleImageLock(sheetId) {
+    get().commitHistory()
     set((state) => ({
       sheets: state.sheets.map((s) => {
         if (s.id !== sheetId || !s.image) return s
@@ -172,6 +248,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
   },
 
   deleteImage(sheetId) {
+    get().commitHistory()
     set((state) => ({ sheets: state.sheets.map((s) => (s.id === sheetId ? { ...s, image: null, dims: [] } : s)) }))
   },
 
@@ -180,6 +257,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
   },
 
   deleteDim(sheetId, dimId) {
+    get().commitHistory()
     set((state) => ({
       sheets: state.sheets.map((s) => (s.id === sheetId ? { ...s, dims: s.dims.filter((d) => d.id !== dimId) } : s)),
       selection: state.selection.type === 'dim' && state.selection.id === dimId ? { type: null, id: null } : state.selection,
@@ -187,6 +265,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
   },
 
   overrideDimText(sheetId, dimId, text) {
+    get().commitHistory()
     set((state) => ({
       sheets: state.sheets.map((s) =>
         s.id === sheetId ? { ...s, dims: s.dims.map((d) => (d.id === dimId ? { ...d, text } : d)) } : s,
@@ -202,8 +281,35 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
     }))
   },
 
+  addAnnotation(sheetId, ann) {
+    get().commitHistory()
+    const full = { ...ann, id: uuidv4() } as Annotation
+    set((state) => ({
+      sheets: state.sheets.map((s) => (s.id === sheetId ? { ...s, annotations: [...s.annotations, full] } : s)),
+      selection: { type: 'annotation', id: full.id },
+    }))
+  },
+
+  patchAnnotation(sheetId, id, patch) {
+    set((state) => ({
+      sheets: state.sheets.map((s) =>
+        s.id === sheetId
+          ? { ...s, annotations: s.annotations.map((a) => (a.id === id ? ({ ...a, ...patch } as Annotation) : a)) }
+          : s,
+      ),
+    }))
+  },
+
+  deleteAnnotation(sheetId, id) {
+    get().commitHistory()
+    set((state) => ({
+      sheets: state.sheets.map((s) => (s.id === sheetId ? { ...s, annotations: s.annotations.filter((a) => a.id !== id) } : s)),
+      selection: state.selection.type === 'annotation' && state.selection.id === id ? { type: null, id: null } : state.selection,
+    }))
+  },
+
   setTool(tool) {
-    set({ tool, cota: IDLE_COTA, cal: IDLE_CAL })
+    set({ tool, cota: IDLE_COTA, cal: IDLE_CAL, draft: IDLE_DRAFT })
   },
 
   setDimMode(mode) {
@@ -235,6 +341,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
   commitCota(pt) {
     const { cota, dimUnit } = get()
     if (cota.step !== 2 || !cota.sheetId || !cota.p1 || !cota.p2 || !cota.resolvedMode) return
+    get().commitHistory()
     const offset = perpendicularOffset(cota.resolvedMode, cota.p1, cota.p2, pt) || 0.001
     const dim: Dimension = {
       id: uuidv4(),
@@ -270,8 +377,25 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
     set({ cal: IDLE_CAL })
   },
 
+  startDraft(tool, sheetId, p) {
+    set({ draft: { tool, sheetId, points: [p], preview: null } })
+  },
+  addDraftPoint(p) {
+    set((state) => ({ draft: { ...state.draft, points: [...state.draft.points, p] } }))
+  },
+  setDraftPreview(p) {
+    set((state) => ({ draft: { ...state.draft, preview: p } }))
+  },
+  cancelDraft() {
+    set({ draft: IDLE_DRAFT })
+  },
+
   setView(view) {
     set({ view })
+  },
+
+  loadProject(sheets, project) {
+    set({ sheets, project, selection: { type: null, id: null }, past: [], future: [] })
   },
 
   async seedSample() {
@@ -314,7 +438,13 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
         { id: uuidv4(), mode: 'v', p1: tl, p2: bl, offset: -16, unit: 'm', text: null },
         { id: uuidv4(), mode: 'aligned', p1: tl, p2: pw, offset: -9, unit: 'm', text: null },
       ],
+      annotations: [],
+      titleBlock: { sheetTitle: 'Planta baixa · térreo', date: '', revision: '' },
     }
-    set({ sheets: [sheet], selection: { type: 'sheet', id: sheet.id } })
+    set({ sheets: [sheet], project: { name: 'Projeto de exemplo', client: '', author: '' }, selection: { type: 'sheet', id: sheet.id }, past: [], future: [] })
   },
 }))
+
+export function annotationSheetOf(sheets: Sheet[], annotationId: string): Sheet | undefined {
+  return findSheetOf(sheets, annotationId)
+}
