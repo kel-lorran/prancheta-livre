@@ -45,7 +45,9 @@ test('adds a level reference line', async ({ page }) => {
   await expect(level.locator('text')).toHaveText('0,00 PISO TÉRREO')
 })
 
-test('adds a detail callout referencing another area', async ({ page }) => {
+// Ferramenta de callout desativada por enquanto (toolbar não expõe mais o botão) — volta
+// depois de redesenhada em cima de grupos. Ver PL-01 do spec "Imagens Vinculadas".
+test.skip('adds a detail callout referencing another area', async ({ page }) => {
   await gotoApp(page)
   await fitToScreen(page)
   const box = await sheetBox(page)

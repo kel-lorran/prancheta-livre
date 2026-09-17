@@ -5,7 +5,6 @@ import type { Orientation, SheetSizeKey } from '../types'
 import {
   AlignedIcon,
   CalibrateIcon,
-  CalloutIcon,
   CotaIcon,
   FitIcon,
   LeaderIcon,
@@ -124,10 +123,9 @@ export function Toolbar({
           <LevelIcon />
           Nível
         </button>
-        <button className={'tool' + (tool === 'callout' ? ' active' : '')} title="Chamada de detalhe (referência a outra vista)" onClick={() => setTool('callout')}>
-          <CalloutIcon />
-          Detalhe
-        </button>
+        {/* Chamada de detalhe desativada por enquanto — hoje é só referência visual (retângulo +
+            legenda), sem vista ampliada real. Volta depois de redesenhada em cima de grupos
+            (ver decisão em aberto no spec "Imagens Vinculadas"). */}
       </div>
 
       <div className="sep" />
