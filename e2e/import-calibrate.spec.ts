@@ -17,15 +17,16 @@ test('imports a PNG into a new sheet and calibrates it to a standard scale', asy
   await page.setInputFiles('input[type="file"][accept="image/png,image/jpeg"]', FIXTURE_PNG)
 
   const secondSheetGroup = page.locator('[data-testid="sheet-group"]').nth(1)
+  await expect(secondSheetGroup.locator('g[data-testid="group"]')).toHaveCount(1)
   await expect(secondSheetGroup.locator('image')).toHaveCount(1)
 
   const box = await sheetBox(page, 1)
-  await page.click('button[title="Calibrar escala da imagem (C)"]')
+  await page.click('button[title="Calibrar escala do grupo (C)"]')
   await page.mouse.click(box.x + box.width * 0.4, box.y + box.height * 0.4)
   await page.mouse.click(box.x + box.width * 0.6, box.y + box.height * 0.4)
   await fillCalibratePrompt(page, 2)
 
-  await expect(secondTab.locator('.badge')).toContainText('1:100')
-  // calibrating locks the image and removes the resize handles
+  await expect(page.locator('svg text', { hasText: '1:100' })).toBeVisible()
+  // calibrating locks the group and removes the resize handles
   await expect(secondSheetGroup.locator('[data-corner]')).toHaveCount(0)
 })

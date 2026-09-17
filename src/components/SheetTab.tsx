@@ -1,7 +1,6 @@
 import type React from 'react'
 import { useState } from 'react'
 import type { Sheet, ViewState } from '../types'
-import { LockIcon, UnlockIcon } from './icons'
 
 interface Props {
   sheet: Sheet
@@ -10,16 +9,15 @@ interface Props {
   onPointerDown: (e: React.PointerEvent, sheet: Sheet) => void
   onRename: (sheet: Sheet, name: string) => void
   onDelete: (sheet: Sheet) => void
-  onToggleLock: (sheet: Sheet) => void
 }
 
-export function SheetTab({ sheet, view, selected, onPointerDown, onRename, onDelete, onToggleLock }: Props) {
+export function SheetTab({ sheet, view, selected, onPointerDown, onRename, onDelete }: Props) {
   const [editing, setEditing] = useState(false)
   const [draft, setDraft] = useState(sheet.name)
 
   const left = view.panX + sheet.x * view.zoom
   const top = view.panY + sheet.y * view.zoom
-  const scaleBadge = sheet.image?.realMetersPerMm ? Math.round(sheet.image.realMetersPerMm * 1000) : null
+  const groupCount = sheet.groups.length
 
   function commitRename() {
     setEditing(false)
@@ -68,15 +66,9 @@ export function SheetTab({ sheet, view, selected, onPointerDown, onRename, onDel
       <span className="size">
         {sheet.size} {sheet.orientation}
       </span>
-      {scaleBadge != null && (
-        <span
-          className="badge"
-          title={sheet.image?.locked ? 'Escala travada — clique para destravar' : 'Clique para travar a escala'}
-          onPointerDown={(e) => e.stopPropagation()}
-          onClick={() => onToggleLock(sheet)}
-        >
-          {sheet.image?.locked ? <LockIcon /> : <UnlockIcon />}
-          1:{scaleBadge}
+      {groupCount > 0 && (
+        <span className="badge" title={`${groupCount} grupo${groupCount > 1 ? 's' : ''} de imagem nesta prancha`}>
+          {groupCount} grupo{groupCount > 1 ? 's' : ''}
         </span>
       )}
       <button

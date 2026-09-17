@@ -1,4 +1,4 @@
-import type { Point, Sheet, ViewState } from '../types'
+import type { ImageGroup, Point, Sheet, ViewState } from '../types'
 
 export function screenToWorld(view: ViewState, rect: DOMRect, clientX: number, clientY: number): Point {
   return {
@@ -13,6 +13,16 @@ export function sheetAtWorldPoint(sheets: Sheet[], pt: Point): Sheet | null {
     if (pt.x >= s.x && pt.x <= s.x + s.w && pt.y >= s.y && pt.y <= s.y + s.h) return s
   }
   return null
+}
+
+/** Grupos cujo frame contém o ponto (sheet-local mm), do topo pro fundo — pra clique normal (primeiro) e Alt+clique (ciclar). */
+export function groupsAtSheetLocalPoint(sheet: Sheet, pt: Point): ImageGroup[] {
+  const hit: ImageGroup[] = []
+  for (let i = sheet.groups.length - 1; i >= 0; i--) {
+    const g = sheet.groups[i]
+    if (pt.x >= g.x && pt.x <= g.x + g.w && pt.y >= g.y && pt.y <= g.y + g.h) hit.push(g)
+  }
+  return hit
 }
 
 export function fitToContentView(sheets: Sheet[], rect: DOMRect): ViewState {

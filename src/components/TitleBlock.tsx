@@ -19,7 +19,8 @@ export function TitleBlock({ sheet, project, sheetNumber, sheetTotal, onEditFiel
   const rightW = CELL_W * CELLS
   const leftX = 0
   const leftW = sheet.w - rightW
-  const scaleLabel = sheet.image?.realMetersPerMm ? `1:${Math.round(sheet.image.realMetersPerMm * 1000)}` : '—'
+  const scales = [...new Set(sheet.groups.map((g) => g.realMetersPerMm).filter((v): v is number => v != null))]
+  const scaleLabel = scales.length === 0 ? '—' : scales.length === 1 ? `1:${Math.round(scales[0] * 1000)}` : 'múltiplas'
 
   const cells: { label: string; value: string; onClick?: (e: React.MouseEvent) => void }[] = [
     { label: 'ESCALA', value: scaleLabel },

@@ -19,6 +19,7 @@ import {
 interface Props {
   onAddSheet: (size: SheetSizeKey, orientation: Orientation) => void
   onImportClick: () => void
+  canImport: boolean
   onFit: () => void
   onZoomIn: () => void
   onZoomOut: () => void
@@ -27,11 +28,13 @@ interface Props {
   onExportPdf: () => void
   onExportProject: () => void
   onImportProjectClick: () => void
+  onShowTips: () => void
 }
 
 export function Toolbar({
   onAddSheet,
   onImportClick,
+  canImport,
   onFit,
   onZoomIn,
   onZoomOut,
@@ -40,11 +43,11 @@ export function Toolbar({
   onExportPdf,
   onExportProject,
   onImportProjectClick,
+  onShowTips,
 }: Props) {
   const tool = useProjectStore((s) => s.tool)
   const dimMode = useProjectStore((s) => s.dimMode)
   const dimUnit = useProjectStore((s) => s.dimUnit)
-  const selection = useProjectStore((s) => s.selection)
   const sheets = useProjectStore((s) => s.sheets)
   const past = useProjectStore((s) => s.past)
   const future = useProjectStore((s) => s.future)
@@ -79,7 +82,7 @@ export function Toolbar({
           <SelectIcon />
           Selecionar
         </button>
-        <button className={'tool' + (tool === 'calibrate' ? ' active' : '')} title="Calibrar escala da imagem (C)" onClick={() => setTool('calibrate')}>
+        <button className={'tool' + (tool === 'calibrate' ? ' active' : '')} title="Calibrar escala do grupo (C)" onClick={() => setTool('calibrate')}>
           <CalibrateIcon />
           Calibrar
         </button>
@@ -144,7 +147,7 @@ export function Toolbar({
       <button className="primary" onClick={() => onAddSheet(sizeKey, orientation)}>
         + Prancha
       </button>
-      <button className="ghost" disabled={selection.type !== 'sheet'} onClick={onImportClick}>
+      <button className="ghost" disabled={!canImport} title={canImport ? 'Importar imagem' : 'Selecione uma prancha (ou entre num grupo) antes de importar'} onClick={onImportClick}>
         Importar imagem
       </button>
 
@@ -176,6 +179,9 @@ export function Toolbar({
 
       <div className="spacer" />
 
+      <button className="ghost" title="Dicas e atalhos" onClick={onShowTips}>
+        ?
+      </button>
       <button className="ghost" title="Ajustar à tela" onClick={onFit}>
         <FitIcon />
       </button>

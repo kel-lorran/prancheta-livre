@@ -8,8 +8,10 @@ test.beforeEach(async ({ page }) => {
 test('seeds a calibrated sample sheet on first load', async ({ page }) => {
   await gotoApp(page)
   await expect(page.locator('.sheet-tab')).toHaveCount(1)
-  await expect(page.locator('.sheet-tab .badge')).toContainText('1:50')
+  await expect(page.locator('.sheet-tab .badge')).toContainText('1 grupo')
+  await expect(page.locator('g[data-testid="group"]')).toHaveCount(1)
   await expect(page.locator('g[data-dim]')).toHaveCount(3)
+  await expect(page.locator('svg text', { hasText: '1:50' })).toBeVisible()
 })
 
 test('adds, renames and deletes a sheet', async ({ page }) => {

@@ -29,11 +29,22 @@ philosophy: free/open-source stack, static deploy, no backend.
 
 - **Infinite canvas of ISO sheets** — A4 through A0, portrait or landscape, created
   and arranged like frames in a design tool.
-- **Import a PNG/JPG** (a SketchUp export, a photo, anything) as a sheet's viewport.
+- **Image groups, not single images**: import a PNG/JPG (a SketchUp export, a
+  photo, anything) and it becomes a group — a sheet can hold any number of groups,
+  and a group can hold any number of images (compose a floor plan with furniture/
+  people PNGs on top, all sharing one calibrated scale). Double-click (or Enter) a
+  group to work inside it; Ctrl+G / Ctrl+Shift+G merges or splits groups; Ctrl+C/X/V
+  (and Ctrl+Shift+V to paste in place) copy, cut and paste images or whole groups.
 - **Calibrate to a real scale**: click two points spanning a known real-world length,
   type that length and the target plotted scale (1:20 through 1:1000, or a custom
-  denominator) — the image is resized so that segment measures exactly right at that
-  scale on paper. The scale is then locked.
+  denominator) — the group is resized so that segment measures exactly right at that
+  scale on paper, then locked. A new image added later (that never had its own
+  scale) can be fit to the group's existing scale the same way, without touching
+  anything else.
+- **Crop**: right-click an image → *Recortar* → click N points to trace a polygon
+  mask (a rectangle is just 4 clicks) → confirm with Enter, a button, or by clicking
+  away. Removes SketchUp export pollution (watermark, axis lines) per image, without
+  ever touching dimensions or annotations.
 - **Dimensioning**, two modes:
   - *Ortogonal* — click two points, the tool decides horizontal or vertical
     automatically from their direction.
@@ -41,9 +52,14 @@ philosophy: free/open-source stack, static deploy, no backend.
   - Text position, gaps, tick marks and line weights follow NBR 6492 conventions
     (text above/left of the line, 2mm leader gap, 3mm text height, etc.).
   - Any dimension's text can be overridden, and its offset dragged to reposition.
-- **Annotations**: leader callouts, circled sequential numbering, a dashed level
-  reference line, and a detail-reference callout (marks an area and points a label
-  at it — see PLANNING.md for how this differs from a real zoomed detail view).
+  - Dimensions belong to the image group they measure, not the sheet — moving,
+    resizing or recalibrating a group never resets its dimensions.
+- **Annotations**: leader callouts, circled sequential numbering, and a dashed
+  level reference line.
+- **Multi-select**: drag an empty area for an AutoCAD-style selection window —
+  left-to-right selects what's fully inside, right-to-left selects anything it
+  touches. Shift-click adds or removes individual items; Alt-click cycles through
+  overlapping groups. Delete removes everything selected at once.
 - **Title block** on every sheet — project name/client/author set once, per-sheet
   title/date/revision edited by clicking the field directly; scale and sheet
   number are always derived automatically, never typed by hand.
@@ -59,14 +75,15 @@ philosophy: free/open-source stack, static deploy, no backend.
 Functional MVP with a full local workflow: draw, dimension, annotate, and export —
 with autosave so you never lose work, and undo/redo throughout. See
 [PLANNING.md](./PLANNING.md) for the full architecture and what's next (angular/
-radius dimensions, layers, multiple viewports per sheet, a proper title-block
-editor).
+radius dimensions, layers, a real zoomed detail view, a proper title-block editor).
 
 ## Testing
 
 End-to-end tests (Playwright) cover sheet CRUD, import + calibration, both
-dimensioning modes, all four annotation tools, undo/redo, and persistence
-(autosave/resume, PDF/zip export):
+dimensioning modes, leader/numbering/level annotations, image groups (entering a
+group and adding a member, cropping, grouping/ungrouping, copy/paste), multi-select
+(marquee + bulk delete), the tips modal, undo/redo, and persistence (autosave/
+resume, PDF/zip export):
 
 ```bash
 npm run test:e2e

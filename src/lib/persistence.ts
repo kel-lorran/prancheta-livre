@@ -1,5 +1,5 @@
 import { openDB, type IDBPDatabase } from 'idb'
-import type { ProjectInfo, Sheet, SheetImage } from '../types'
+import type { ImageGroup, ProjectInfo, Sheet, SheetImage } from '../types'
 import { blobToDataUrl, dataUrlToBlob } from './blobUtils'
 
 const DB_NAME = 'prancheta-livre'
@@ -9,7 +9,8 @@ const KEY = 'current'
 interface StoredImage extends Omit<SheetImage, 'href'> {
   blob: Blob
 }
-type StoredSheet = Omit<Sheet, 'image'> & { image: StoredImage | null }
+type StoredGroup = Omit<ImageGroup, 'images'> & { images: StoredImage[] }
+type StoredSheet = Omit<Sheet, 'groups'> & { groups: StoredGroup[] }
 interface StoredProject {
   sheets: StoredSheet[]
   project: ProjectInfo
@@ -30,12 +31,21 @@ function getDB(): Promise<IDBPDatabase> {
 
 export async function saveProject(sheets: Sheet[], project: ProjectInfo): Promise<void> {
   const storedSheets: StoredSheet[] = await Promise.all(
-    sheets.map(async (s) => {
-      if (!s.image) return { ...s, image: null }
-      const { href, ...rest } = s.image
-      const blob = await dataUrlToBlob(href)
-      return { ...s, image: { ...rest, blob } }
-    }),
+    sheets.map(async (s) => ({
+      ...s,
+      groups: await Promise.all(
+        s.groups.map(async (g) => ({
+          ...g,
+          images: await Promise.all(
+            g.images.map(async (im) => {
+              const { href, ...rest } = im
+              const blob = await dataUrlToBlob(href)
+              return { ...rest, blob }
+            }),
+          ),
+        })),
+      ),
+    })),
   )
   const db = await getDB()
   const record: StoredProject = { sheets: storedSheets, project, savedAt: Date.now() }
@@ -47,12 +57,21 @@ export async function loadPersistedProject(): Promise<{ sheets: Sheet[]; project
   const data = (await db.get(STORE, KEY)) as StoredProject | undefined
   if (!data) return null
   const sheets: Sheet[] = await Promise.all(
-    data.sheets.map(async (s) => {
-      if (!s.image) return { ...s, image: null }
-      const { blob, ...rest } = s.image
-      const href = await blobToDataUrl(blob)
-      return { ...s, image: { ...rest, href } }
-    }),
+    data.sheets.map(async (s) => ({
+      ...s,
+      groups: await Promise.all(
+        s.groups.map(async (g) => ({
+          ...g,
+          images: await Promise.all(
+            g.images.map(async (im) => {
+              const { blob, ...rest } = im
+              const href = await blobToDataUrl(blob)
+              return { ...rest, href }
+            }),
+          ),
+        })),
+      ),
+    })),
   )
   return { sheets, project: data.project }
 }

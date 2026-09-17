@@ -5,18 +5,26 @@ import { svg2pdf } from 'svg2pdf.js'
 import type { CalState, CotaState, DraftState, ProjectInfo, Sheet } from '../types'
 import { SheetView, type SheetHandlers } from '../components/SheetView'
 
-const IDLE_COTA: CotaState = { step: 0, sheetId: null, p1: null, p2: null, resolvedMode: null, previewOffset: null }
-const IDLE_CAL: CalState = { step: 0, sheetId: null, p1: null, preview: null }
-const IDLE_DRAFT: DraftState = { tool: null, sheetId: null, points: [], preview: null }
+const IDLE_COTA: CotaState = { step: 0, sheetId: null, groupId: null, p1: null, p2: null, resolvedMode: null, previewOffset: null }
+const IDLE_CAL: CalState = { step: 0, mode: 'group', sheetId: null, groupId: null, imageId: null, p1: null, preview: null }
+const IDLE_DRAFT: DraftState = { tool: null, sheetId: null, groupId: null, points: [], preview: null }
 const NOOP_HANDLERS: SheetHandlers = {
-  onImagePointerDown: () => {},
-  onHandlePointerDown: () => {},
+  onGroupPointerDown: () => {},
+  onGroupHandlePointerDown: () => {},
+  onGroupDoubleClick: () => {},
+  onGroupContextMenu: () => {},
+  onMemberPointerDown: () => {},
+  onMemberHandlePointerDown: () => {},
+  onMemberContextMenu: () => {},
   onDimPointerDown: () => {},
   onDimDoubleClick: () => {},
   onAnnotationPrimaryDown: () => {},
   onAnnotationSecondaryDown: () => {},
   onAnnotationDoubleClick: () => {},
   onTitleBlockEdit: () => {},
+  onCropVertexPointerDown: () => {},
+  onCropVertexDoubleClick: () => {},
+  onCropEdgeClick: () => {},
 }
 
 const SVGNS = 'http://www.w3.org/2000/svg'
@@ -41,9 +49,12 @@ function renderSheetSvg(sheet: Sheet, project: ProjectInfo, sheetNumber: number,
         sheet={{ ...sheet, x: 0, y: 0 }}
         tool="select"
         selection={{ type: null, id: null }}
+        multiSelection={[]}
+        openGroupId={null}
         cota={IDLE_COTA}
         cal={IDLE_CAL}
         draft={IDLE_DRAFT}
+        crop={null}
         project={project}
         sheetNumber={sheetNumber}
         sheetTotal={sheetTotal}

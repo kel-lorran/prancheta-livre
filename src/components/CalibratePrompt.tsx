@@ -5,11 +5,14 @@ import { STANDARD_SCALES } from '../lib/isoSizes'
 interface Props {
   x: number
   y: number
+  /** 'group' pergunta escala (Calibrar, primeira vez); 'member' só pergunta o comprimento real
+   *  (Ajustar à escala do grupo — a escala já vem do grupo). */
+  mode?: 'group' | 'member'
   onConfirm: (meters: number, denom: number) => void
   onCancel: () => void
 }
 
-export function CalibratePrompt({ x, y, onConfirm, onCancel }: Props) {
+export function CalibratePrompt({ x, y, mode = 'group', onConfirm, onCancel }: Props) {
   const lengthRef = useRef<HTMLInputElement>(null)
   const unitRef = useRef<HTMLSelectElement>(null)
   const customRef = useRef<HTMLInputElement>(null)
@@ -21,7 +24,7 @@ export function CalibratePrompt({ x, y, onConfirm, onCancel }: Props) {
 
   function confirm() {
     const v = parseFloat((lengthRef.current?.value ?? '').replace(',', '.'))
-    const denom = scale === 'custom' ? parseFloat((customRef.current?.value ?? '').replace(',', '.')) : parseFloat(scale)
+    const denom = mode === 'member' ? 1 : scale === 'custom' ? parseFloat((customRef.current?.value ?? '').replace(',', '.')) : parseFloat(scale)
     if (!isFinite(v) || v <= 0 || !isFinite(denom) || denom <= 0) {
       onCancel()
       return
@@ -48,22 +51,26 @@ export function CalibratePrompt({ x, y, onConfirm, onCancel }: Props) {
           <option value="cm">cm</option>
           <option value="mm">mm</option>
         </select>
-        <span className="fieldlabel">escala da prancha</span>
-        <select value={scale} onChange={(e) => setScale(e.target.value)} onKeyDown={onKeyDown}>
-          {STANDARD_SCALES.map((sc) => (
-            <option key={sc} value={sc}>
-              1:{sc}
-            </option>
-          ))}
-          <option value="custom">personalizada</option>
-        </select>
-        {scale === 'custom' && (
-          <span className="customscale">
-            1:<input ref={customRef} type="number" placeholder="ex: 40" onKeyDown={onKeyDown} />
-          </span>
+        {mode === 'group' && (
+          <>
+            <span className="fieldlabel">escala da prancha</span>
+            <select value={scale} onChange={(e) => setScale(e.target.value)} onKeyDown={onKeyDown}>
+              {STANDARD_SCALES.map((sc) => (
+                <option key={sc} value={sc}>
+                  1:{sc}
+                </option>
+              ))}
+              <option value="custom">personalizada</option>
+            </select>
+            {scale === 'custom' && (
+              <span className="customscale">
+                1:<input ref={customRef} type="number" placeholder="ex: 40" onKeyDown={onKeyDown} />
+              </span>
+            )}
+          </>
         )}
         <button className="ok" onClick={confirm}>
-          Redimensionar e travar
+          {mode === 'group' ? 'Redimensionar e travar' : 'Ajustar à escala do grupo'}
         </button>
         <button className="cancel" onClick={onCancel}>
           Esc

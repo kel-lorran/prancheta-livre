@@ -1,13 +1,14 @@
 import JSZip from 'jszip'
-import type { ProjectInfo, Sheet, SheetImage } from '../types'
+import type { ImageGroup, ProjectInfo, Sheet, SheetImage } from '../types'
 import { blobToDataUrl, dataUrlToBlob } from './blobUtils'
 
-const MANIFEST_VERSION = 1
+const MANIFEST_VERSION = 2
 
 interface ManifestImage extends Omit<SheetImage, 'href'> {
   file: string
 }
-type ManifestSheet = Omit<Sheet, 'image'> & { image: ManifestImage | null }
+type ManifestGroup = Omit<ImageGroup, 'images'> & { images: ManifestImage[] }
+type ManifestSheet = Omit<Sheet, 'groups'> & { groups: ManifestGroup[] }
 interface Manifest {
   version: number
   project: ProjectInfo
@@ -33,15 +34,24 @@ function downloadBlob(blob: Blob, filename: string): void {
 export async function exportProjectZip(sheets: Sheet[], project: ProjectInfo): Promise<void> {
   const zip = new JSZip()
   const manifestSheets: ManifestSheet[] = await Promise.all(
-    sheets.map(async (s) => {
-      if (!s.image) return { ...s, image: null }
-      const blob = await dataUrlToBlob(s.image.href)
-      const ext = blob.type === 'image/jpeg' ? 'jpg' : 'png'
-      const file = `images/${s.id}.${ext}`
-      zip.file(file, blob)
-      const { href: _href, ...rest } = s.image
-      return { ...s, image: { ...rest, file } }
-    }),
+    sheets.map(async (s) => ({
+      ...s,
+      groups: await Promise.all(
+        s.groups.map(async (g) => ({
+          ...g,
+          images: await Promise.all(
+            g.images.map(async (im) => {
+              const blob = await dataUrlToBlob(im.href)
+              const ext = blob.type === 'image/jpeg' ? 'jpg' : 'png'
+              const file = `images/${im.id}.${ext}`
+              zip.file(file, blob)
+              const { href: _href, ...rest } = im
+              return { ...rest, file }
+            }),
+          ),
+        })),
+      ),
+    })),
   )
   const manifest: Manifest = { version: MANIFEST_VERSION, project, sheets: manifestSheets }
   zip.file('manifest.json', JSON.stringify(manifest, null, 2))
@@ -55,15 +65,26 @@ export async function importProjectZip(file: File): Promise<{ sheets: Sheet[]; p
   if (!manifestEntry) throw new Error('Arquivo inválido: manifest.json não encontrado.')
   const manifest = JSON.parse(await manifestEntry.async('string')) as Manifest
   const sheets: Sheet[] = await Promise.all(
-    manifest.sheets.map(async (s) => {
-      if (!s.image) return { ...s, image: null } as Sheet
-      const entry = zip.file(s.image.file)
-      if (!entry) return { ...s, image: null } as Sheet
-      const blob = await entry.async('blob')
-      const href = await blobToDataUrl(blob)
-      const { file: _file, ...rest } = s.image
-      return { ...s, image: { ...rest, href } } as Sheet
-    }),
-  )
+    manifest.sheets.map(async (s) => ({
+      ...s,
+      groups: await Promise.all(
+        s.groups.map(async (g) => ({
+          ...g,
+          images: (
+            await Promise.all(
+              g.images.map(async (im) => {
+                const entry = zip.file(im.file)
+                if (!entry) return null
+                const blob = await entry.async('blob')
+                const href = await blobToDataUrl(blob)
+                const { file: _file, ...rest } = im
+                return { ...rest, href } as SheetImage
+              }),
+            )
+          ).filter((im): im is SheetImage => im != null),
+        })),
+      ),
+    })),
+  ) as unknown as Sheet[]
   return { sheets, project: manifest.project }
 }

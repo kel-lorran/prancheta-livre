@@ -3,6 +3,8 @@ import type { Page } from '@playwright/test'
 export async function gotoApp(page: Page): Promise<void> {
   await page.goto('/')
   await page.locator('.sheet-tab').first().waitFor({ state: 'visible' })
+  const tipsClose = page.locator('.tips-modal button.ok')
+  if (await tipsClose.isVisible().catch(() => false)) await tipsClose.click()
 }
 
 export async function fitToScreen(page: Page): Promise<void> {
