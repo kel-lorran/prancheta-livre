@@ -5,6 +5,8 @@ export type LengthUnit = 'm' | 'mm'
 export type SheetSizeKey = 'A4' | 'A3' | 'A2' | 'A1' | 'A0'
 export type Orientation = 'retrato' | 'paisagem'
 export type DraftTool = 'leader' | 'level'
+/** Canto de uma alça de redimensionar (grupo ou membro). */
+export type Corner = 'nw' | 'ne' | 'sw' | 'se'
 
 export interface Point {
   x: number

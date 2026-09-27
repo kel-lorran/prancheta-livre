@@ -2,13 +2,13 @@ import type React from 'react'
 import { dimGeometry } from '../lib/dimGeometry'
 import { groupLocalBounds } from '../lib/groupGeometry'
 import { dimsInGroupMm, annotationsInGroupMm } from '../state/projectStore'
-import type { CalState, CotaState, CropState, DimGeometryMode, DraftState, ImageGroup, Point, ProjectInfo, Selection, Sheet, SheetImage, ToolName } from '../types'
+import type { CalState, Corner, CotaState, CropState, DimGeometryMode, DraftState, ImageGroup, Point, ProjectInfo, Selection, Sheet, SheetImage, ToolName } from '../types'
 import type { SelectionItem } from '../state/projectStore'
 import { DimensionView } from './DimensionView'
 import { AnnotationView } from './AnnotationView'
 import { TitleBlock } from './TitleBlock'
 
-export type Corner = 'nw' | 'ne' | 'sw' | 'se'
+export type { Corner } from '../types'
 
 export interface SheetHandlers {
   onGroupPointerDown: (e: React.PointerEvent, sheet: Sheet, group: ImageGroup) => void

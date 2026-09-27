@@ -5,6 +5,7 @@ import { fitToContentView, focusOnSheetView, screenToWorld, sheetAtWorldPoint, g
 import { formatDimText, perpendicularOffset } from '../lib/dimGeometry'
 import { loadPersistedProject, saveProject } from '../lib/persistence'
 import { annotationWorldBoxes, boxContains, boxesIntersect, dimWorldBoxes, groupWorldBox, type Box } from '../lib/marquee'
+import { computeAnchoredResize } from '../lib/resizeGeometry'
 import type { DraftTool, ImageGroup, Orientation, Point, ProjectInfo, Sheet, SheetImage, SheetSizeKey } from '../types'
 import { SheetView, type Corner } from './SheetView'
 import { SheetTab } from './SheetTab'
@@ -470,40 +471,23 @@ export function Canvas() {
     }
   }
 
-  function cornerAnchor(corner: Corner, orig: { x: number; y: number; w: number; h: number }) {
-    return corner === 'nw'
-      ? { x: orig.x + orig.w, y: orig.y + orig.h }
-      : corner === 'ne'
-        ? { x: orig.x, y: orig.y + orig.h }
-        : corner === 'sw'
-          ? { x: orig.x + orig.w, y: orig.y }
-          : { x: orig.x, y: orig.y }
-  }
-
   function beginResizeGroup(e: React.PointerEvent, sheet: Sheet, group: ImageGroup, corner: Corner) {
     useProjectStore.getState().commitHistory()
     const orig = { x: group.x, y: group.y, w: group.w, h: group.h }
-    const anchor = cornerAnchor(corner, orig)
-    const aspect = orig.w / orig.h
     dragRef.current = {
       moved: false,
       startX: e.clientX,
       startY: e.clientY,
       onMove(ev) {
         const world = toWorld(ev.clientX, ev.clientY)
-        // orig/anchor estão em mm sheet-local (relativos à origem da prancha) — o cursor vem em
-        // mm de mundo, então precisa descontar a posição da própria prancha antes de comparar.
+        // orig está em mm sheet-local (relativo à origem da prancha) — o cursor vem em mm de
+        // mundo, então precisa descontar a posição da própria prancha antes de comparar.
         const cur = { x: world.x - sheet.x, y: world.y - sheet.y }
-        let neww = Math.abs(cur.x - anchor.x)
-        let newh = neww / aspect
-        neww = Math.max(neww, 10)
-        newh = Math.max(newh, 10 / aspect)
-        const x = corner === 'ne' || corner === 'se' ? anchor.x : anchor.x - neww
-        const y = corner === 'sw' || corner === 'se' ? anchor.y : anchor.y - newh
-        const factor = neww / orig.w
+        const resized = computeAnchoredResize(orig, corner, cur, 10)
+        const factor = resized.w / orig.w
         const g = findGroupById(useProjectStore.getState().sheets, group.id)?.group
         if (!g) return
-        setGroupRect(group.id, { x, y, w: neww, h: newh })
+        setGroupRect(group.id, resized)
         setMemberRectsForGroupResize(group.id, g, factor)
       },
     }
@@ -519,26 +503,19 @@ export function Canvas() {
   function beginResizeMember(e: React.PointerEvent, sheet: Sheet, group: ImageGroup, image: SheetImage, corner: Corner) {
     useProjectStore.getState().commitHistory()
     const orig = { x: image.x, y: image.y, w: image.w, h: image.h }
-    const anchor = cornerAnchor(corner, orig)
-    const aspect = orig.w / orig.h
     dragRef.current = {
       moved: false,
       startX: e.clientX,
       startY: e.clientY,
       onMove(ev) {
         const world = toWorld(ev.clientX, ev.clientY)
-        // orig/anchor estão em mm locais ao grupo — descontar prancha + origem do grupo antes de comparar.
+        // orig está em mm locais ao grupo — descontar prancha + origem do grupo antes de comparar.
         const cur = { x: world.x - sheet.x - group.x, y: world.y - sheet.y - group.y }
-        let neww = Math.abs(cur.x - anchor.x)
-        let newh = neww / aspect
-        neww = Math.max(neww, 5)
-        newh = Math.max(newh, 5 / aspect)
-        const x = corner === 'ne' || corner === 'se' ? anchor.x : anchor.x - neww
-        const y = corner === 'sw' || corner === 'se' ? anchor.y : anchor.y - newh
-        setMemberRect(group.id, image.id, { x, y, w: neww, h: newh })
+        setMemberRect(group.id, image.id, computeAnchoredResize(orig, corner, cur, 5))
       },
     }
   }
+
 
   function beginAdjustDim(e: React.PointerEvent, sheet: Sheet, group: ImageGroup, dimId: string) {
     useProjectStore.getState().commitHistory()

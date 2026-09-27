@@ -1,7 +1,8 @@
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { test, expect } from '@playwright/test'
-import { clickInSheet, fitToScreen, gotoApp, sheetBox } from './helpers'
+import { clickInSheet, dragBy, dragTo, fitToScreen, gotoApp, sheetBox, storeState } from './helpers'
+import type { ImageGroup, Sheet } from '../src/types'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const FIXTURE_PNG = path.join(__dirname, 'fixtures', 'sample-plan.png')
@@ -24,33 +25,33 @@ test('cotar still works past a member resized beyond its group frame, with a sec
   await expect(groups).toHaveCount(2)
 
   const pasted = groups.nth(1)
-  const pastedBox = await pasted.boundingBox()
-  if (!pastedBox) throw new Error('grupo colado sem bounding box')
-  await page.mouse.move(pastedBox.x + pastedBox.width / 2, pastedBox.y + pastedBox.height / 2)
-  await page.mouse.down()
-  await page.mouse.move(box.x + box.width * 0.6, box.y + box.height * 0.55, { steps: 5 })
-  await page.mouse.up()
+  await dragTo(page, pasted, box.x + box.width * 0.6, box.y + box.height * 0.55)
 
   await pasted.dblclick()
   await pasted.click({ button: 'right' })
   await page.locator('.context-menu button:has-text("Destravar imagem")').click()
 
+  const before = await storeState<{ sheets: Sheet[] }>(page)
+  const beforeImage = (before.sheets[0].groups[1] as ImageGroup).images[0]
+
   const handle = pasted.locator('[data-corner="nw"]')
   const handleBox = await handle.boundingBox()
   if (!handleBox) throw new Error('alça de redimensionar não encontrada')
-  const hx = handleBox.x + handleBox.width / 2
-  const hy = handleBox.y + handleBox.height / 2
-  await page.mouse.move(hx, hy)
-  await page.mouse.down()
   // arrasta o canto NW pra cima/esquerda — afasta do ponto de ancoragem (SE), crescendo a imagem
-  await page.mouse.move(hx - 140, hy - 90, { steps: 5 })
-  await page.mouse.up()
+  await dragBy(page, handle, -140, -90)
   await page.keyboard.press('Escape')
+
+  // confirma que o redimensionamento em si calculou certo (regressão da mistura de coordenadas
+  // mundo/local): cresceu de verdade, e manteve a proporção original
+  const after = await storeState<{ sheets: Sheet[] }>(page)
+  const afterImage = (after.sheets[0].groups[1] as ImageGroup).images[0]
+  expect(afterImage.w).toBeGreaterThan(beforeImage.w * 1.2)
+  expect(afterImage.w / afterImage.h).toBeCloseTo(beforeImage.w / beforeImage.h, 2)
 
   // essa área só existe depois do redimensionamento, fora do frame antigo do grupo colado — antes
   // da correção, groupsAtSheetLocalPoint recusava o ponto e a ferramenta de cota não fazia nada
-  const targetX = hx - 70
-  const targetY = hy - 45
+  const targetX = handleBox.x - 70
+  const targetY = handleBox.y - 45
   const dims = page.locator('g[data-dim]')
   const dimsBefore = await dims.count()
   await page.click('button[title="Cota (D)"]')
@@ -149,12 +150,7 @@ test('agrupar merges two independent groups, desagrupar splits them back', async
   await expect(groups).toHaveCount(2)
 
   const pasted = groups.nth(1)
-  const pastedBox = await pasted.boundingBox()
-  if (!pastedBox) throw new Error('grupo colado sem bounding box')
-  await page.mouse.move(pastedBox.x + pastedBox.width / 2, pastedBox.y + pastedBox.height / 2)
-  await page.mouse.down()
-  await page.mouse.move(box.x + box.width * 0.82, box.y + box.height * 0.15, { steps: 5 })
-  await page.mouse.up()
+  await dragTo(page, pasted, box.x + box.width * 0.82, box.y + box.height * 0.15)
 
   await groups.nth(0).click()
   await groups.nth(1).click({ modifiers: ['Shift'] })
