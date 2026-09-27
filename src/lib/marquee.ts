@@ -43,6 +43,8 @@ function annotationPoints(a: Annotation): { x: number; y: number }[] {
   switch (a.kind) {
     case 'marker':
       return [a.pos]
+    case 'text':
+      return [a.pos]
     case 'leader':
       return [a.anchor, a.label]
     case 'level':

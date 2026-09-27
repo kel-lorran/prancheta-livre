@@ -31,6 +31,14 @@ export async function fillFloatingPrompt(page: Page, text: string) {
   await page.click('.floating-box button.ok')
 }
 
+/** Fills the multiline free-text prompt (textarea) — `text` may contain \n — and confirms. */
+export async function fillFreeTextPrompt(page: Page, text: string) {
+  const area = page.locator('.floating-box textarea').first()
+  await area.waitFor({ state: 'visible' })
+  await area.fill(text)
+  await page.click('.floating-box button.ok')
+}
+
 /** Fills the calibration prompt (real length in meters, default 1:100 scale) and confirms. */
 export async function fillCalibratePrompt(page: Page, meters: number) {
   const input = page.locator('.floating-box input[type="number"]').first()

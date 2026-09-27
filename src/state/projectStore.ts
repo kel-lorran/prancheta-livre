@@ -54,6 +54,8 @@ interface ProjectState {
   tool: ToolName
   dimMode: DimToolMode
   dimUnit: LengthUnit
+  /** Tamanho (mm de papel) usado ao criar o próximo rótulo de texto livre. */
+  freeTextSize: number
   view: ViewState
   cota: CotaState
   cal: CalState
@@ -117,6 +119,7 @@ interface ProjectState {
   setTool: (tool: ToolName) => void
   setDimMode: (mode: DimToolMode) => void
   setDimUnit: (unit: LengthUnit) => void
+  setFreeTextSize: (size: number) => void
 
   startCota: (sheetId: string, groupId: string, p1: Point) => void
   setCotaP2: (p2: Point) => void
@@ -214,6 +217,8 @@ function annotationFromFrac(group: Pick<ImageGroup, 'w' | 'h'>, ann: Annotation)
   switch (ann.kind) {
     case 'marker':
       return { ...ann, pos: fromGroupFrac(group, ann.pos) }
+    case 'text':
+      return { ...ann, pos: fromGroupFrac(group, ann.pos) }
     case 'leader':
       return { ...ann, anchor: fromGroupFrac(group, ann.anchor), label: fromGroupFrac(group, ann.label) }
     case 'level':
@@ -229,6 +234,8 @@ function annotationFromFrac(group: Pick<ImageGroup, 'w' | 'h'>, ann: Annotation)
 function newAnnotationToFrac(group: Pick<ImageGroup, 'w' | 'h'>, ann: NewAnnotation): NewAnnotation {
   switch (ann.kind) {
     case 'marker':
+      return { ...ann, pos: toGroupFrac(group, ann.pos) }
+    case 'text':
       return { ...ann, pos: toGroupFrac(group, ann.pos) }
     case 'leader':
       return { ...ann, anchor: toGroupFrac(group, ann.anchor), label: toGroupFrac(group, ann.label) }
@@ -273,6 +280,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
   tool: 'select',
   dimMode: 'ortho',
   dimUnit: 'mm',
+  freeTextSize: 3.6,
   view: { panX: 80, panY: 60, zoom: 2.6 },
   cota: IDLE_COTA,
   cal: IDLE_CAL,
@@ -737,6 +745,10 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
     set({ dimUnit: unit })
   },
 
+  setFreeTextSize(size) {
+    set({ freeTextSize: size })
+  },
+
   startCota(sheetId, groupId, p1) {
     set({ cota: { step: 1, sheetId, groupId, p1, p2: null, resolvedMode: null, previewOffset: null } })
   },
@@ -877,6 +889,8 @@ function shiftAnnotationAbs(ann: Annotation, dx: number, dy: number, scale: numb
   switch (ann.kind) {
     case 'marker':
       return { ...ann, pos: { x: ann.pos.x * scale + dx, y: ann.pos.y * scale + dy } }
+    case 'text':
+      return { ...ann, pos: { x: ann.pos.x * scale + dx, y: ann.pos.y * scale + dy }, size: ann.size * scale }
     case 'leader':
       return { ...ann, anchor: { x: ann.anchor.x * scale + dx, y: ann.anchor.y * scale + dy }, label: { x: ann.label.x * scale + dx, y: ann.label.y * scale + dy } }
     case 'level':
@@ -888,6 +902,11 @@ function shiftAnnotationAbs(ann: Annotation, dx: number, dy: number, scale: numb
 
 export function annotationSheetOf(sheets: Sheet[], annotationId: string) {
   return findGroupOfAnnotation(sheets, annotationId)?.sheet
+}
+export function findAnnotationById(sheets: Sheet[], id: string) {
+  const found = findGroupOfAnnotation(sheets, id)
+  const annotation = found?.group.annotations.find((a) => a.id === id)
+  return found && annotation ? { ...found, annotation } : undefined
 }
 export function findGroupById(sheets: Sheet[], groupId: string) {
   return findGroup(sheets, groupId)

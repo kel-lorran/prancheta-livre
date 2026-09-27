@@ -1,4 +1,4 @@
-export type ToolName = 'select' | 'calibrate' | 'fitScale' | 'cota' | 'leader' | 'marker' | 'level'
+export type ToolName = 'select' | 'calibrate' | 'fitScale' | 'cota' | 'leader' | 'marker' | 'level' | 'text'
 export type DimToolMode = 'ortho' | 'aligned'
 export type DimGeometryMode = 'h' | 'v' | 'aligned'
 export type LengthUnit = 'm' | 'mm'
@@ -85,7 +85,18 @@ export interface CalloutAnnotation {
   targetPos: Point
   text: string
 }
-export type Annotation = LeaderAnnotation | MarkerAnnotation | LevelAnnotation | CalloutAnnotation
+/** Rótulo solto, sempre centralizado em `pos` (horizontal e vertical) — `text` pode ter \n. */
+export interface FreeTextAnnotation {
+  id: string
+  kind: 'text'
+  pos: Point
+  text: string
+  /** Tamanho da fonte em mm de papel — fixo, não escala com o frame do grupo (igual às outras anotações). */
+  size: number
+  /** Graus, em torno do próprio centro (`pos`). */
+  rotation: number
+}
+export type Annotation = LeaderAnnotation | MarkerAnnotation | LevelAnnotation | CalloutAnnotation | FreeTextAnnotation
 export type AnnotationKind = Annotation['kind']
 
 /** Plain Omit collapses a union's keys to their intersection; this distributes over each member instead. */

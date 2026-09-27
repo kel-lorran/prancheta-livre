@@ -13,8 +13,15 @@ import {
   OrthoIcon,
   RedoIcon,
   SelectIcon,
+  TextIcon,
   UndoIcon,
 } from './icons'
+
+const FREE_TEXT_SIZES: { label: string; mm: number }[] = [
+  { label: 'Pequeno', mm: 2.6 },
+  { label: 'Padrão', mm: 3.6 },
+  { label: 'Grande', mm: 5.2 },
+]
 
 interface Props {
   onAddSheet: (size: SheetSizeKey, orientation: Orientation) => void
@@ -48,12 +55,14 @@ export function Toolbar({
   const tool = useProjectStore((s) => s.tool)
   const dimMode = useProjectStore((s) => s.dimMode)
   const dimUnit = useProjectStore((s) => s.dimUnit)
+  const freeTextSize = useProjectStore((s) => s.freeTextSize)
   const sheets = useProjectStore((s) => s.sheets)
   const past = useProjectStore((s) => s.past)
   const future = useProjectStore((s) => s.future)
   const setTool = useProjectStore((s) => s.setTool)
   const setDimMode = useProjectStore((s) => s.setDimMode)
   const setDimUnit = useProjectStore((s) => s.setDimUnit)
+  const setFreeTextSize = useProjectStore((s) => s.setFreeTextSize)
   const undo = useProjectStore((s) => s.undo)
   const redo = useProjectStore((s) => s.redo)
 
@@ -126,10 +135,24 @@ export function Toolbar({
           <LevelIcon />
           Nível
         </button>
+        <button className={'tool' + (tool === 'text' ? ' active' : '')} title="Texto livre — rótulo centralizado, com rotação" onClick={() => setTool('text')}>
+          <TextIcon />
+          Texto
+        </button>
         {/* Chamada de detalhe desativada por enquanto — hoje é só referência visual (retângulo +
             legenda), sem vista ampliada real. Volta depois de redesenhada em cima de grupos
             (ver decisão em aberto no spec "Imagens Vinculadas"). */}
       </div>
+
+      {tool === 'text' && (
+        <div className="grp">
+          {FREE_TEXT_SIZES.map(({ label, mm }) => (
+            <button key={label} className={'tool' + (freeTextSize === mm ? ' active' : '')} onClick={() => setFreeTextSize(mm)}>
+              {label}
+            </button>
+          ))}
+        </div>
+      )}
 
       <div className="sep" />
 

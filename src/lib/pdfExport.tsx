@@ -20,6 +20,7 @@ const NOOP_HANDLERS: SheetHandlers = {
   onDimDoubleClick: () => {},
   onAnnotationPrimaryDown: () => {},
   onAnnotationSecondaryDown: () => {},
+  onAnnotationRotateDown: () => {},
   onAnnotationDoubleClick: () => {},
   onTitleBlockEdit: () => {},
   onCropVertexPointerDown: () => {},

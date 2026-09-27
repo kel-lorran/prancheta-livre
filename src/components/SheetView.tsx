@@ -22,6 +22,7 @@ export interface SheetHandlers {
   onDimDoubleClick: (e: React.MouseEvent, sheet: Sheet, group: ImageGroup, dimId: string) => void
   onAnnotationPrimaryDown: (e: React.PointerEvent, sheet: Sheet, group: ImageGroup, annId: string) => void
   onAnnotationSecondaryDown: (e: React.PointerEvent, sheet: Sheet, group: ImageGroup, annId: string) => void
+  onAnnotationRotateDown: (e: React.PointerEvent, sheet: Sheet, group: ImageGroup, annId: string) => void
   onAnnotationDoubleClick: (e: React.MouseEvent, sheet: Sheet, group: ImageGroup, annId: string) => void
   onTitleBlockEdit: (e: React.MouseEvent, sheet: Sheet, field: 'sheetTitle' | 'date' | 'revision', current: string) => void
   onCropVertexPointerDown: (e: React.PointerEvent, index: number) => void
@@ -208,6 +209,7 @@ function GroupView({ sheet, group, tool, selection, multiSelection, isOpen, mark
             selected={(selection.type === 'annotation' && selection.id === a.id) || isSel(multiSelection, 'annotation', a.id)}
             onPointerDownPrimary={(e) => handlers.onAnnotationPrimaryDown(e, sheet, group, a.id)}
             onPointerDownSecondary={(e) => handlers.onAnnotationSecondaryDown(e, sheet, group, a.id)}
+            onPointerDownRotate={(e) => handlers.onAnnotationRotateDown(e, sheet, group, a.id)}
             onDoubleClick={(e) => handlers.onAnnotationDoubleClick(e, sheet, group, a.id)}
           />
         )

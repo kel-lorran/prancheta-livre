@@ -1,4 +1,4 @@
-import { useProjectStore, findMemberById } from '../state/projectStore'
+import { useProjectStore, findMemberById, findAnnotationById } from '../state/projectStore'
 
 interface Props {
   warning: string | null
@@ -24,7 +24,11 @@ export function StatusBar({ warning, coords }: Props) {
     if (multiSelection.length) return `${multiSelection.length} itens selecionados — Delete remove todos, Shift+clique ajusta a seleção.`
     if (tool === 'select') {
       if (selection.type === 'dim') return 'Cota selecionada — duplo clique no valor para sobrescrever o texto, Delete para remover.'
-      if (selection.type === 'annotation') return 'Anotação selecionada — arraste para mover, duplo clique no texto para editar, Delete para remover.'
+      if (selection.type === 'annotation') {
+        const ann = findAnnotationById(sheets, selection.id)?.annotation
+        if (ann?.kind === 'text') return 'Texto selecionado — arraste para mover, alça de cima gira (Shift trava em 15°), duplo clique edita, Delete remove.'
+        return 'Anotação selecionada — arraste para mover, duplo clique no texto para editar, Delete para remover.'
+      }
       if (selection.type === 'member') {
         const found = findMemberById(sheets, selection.id)
         const locked = found?.image.locked
@@ -53,6 +57,7 @@ export function StatusBar({ warning, coords }: Props) {
       return 'Mova o mouse e clique para definir o afastamento da linha de cota. Esc cancela.'
     }
     if (tool === 'marker') return 'Numeração: clique um ponto pra adicionar o próximo número circulado.'
+    if (tool === 'text') return 'Texto: clique onde o rótulo deve ficar centralizado. Enter quebra linha, Ctrl+Enter confirma.'
     if (tool === 'leader') {
       if (!draft.tool) return 'Chamada: clique o ponto que quer apontar.'
       return 'Clique onde o texto deve ficar.'

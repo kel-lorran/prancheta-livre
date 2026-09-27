@@ -348,6 +348,30 @@ svg#stage {
   padding: 6px 7px;
   width: 92px;
 }
+.floating-box textarea {
+  font: 15px/1.35 'IBM Plex Sans Condensed', sans-serif;
+  color: var(--text);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  padding: 7px 8px;
+  width: 220px;
+  min-height: 1.4em;
+  resize: none;
+  overflow: hidden;
+  text-align: center;
+  flex-basis: 100%;
+}
+.floating-box textarea:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+.floating-box .kbdhint {
+  flex-basis: 100%;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 10px;
+  color: var(--muted);
+}
 .floating-box select {
   font: 12.5px 'IBM Plex Sans', sans-serif;
   color: var(--text);

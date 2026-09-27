@@ -105,6 +105,13 @@ export function LevelIcon() {
     </svg>
   )
 }
+export function TextIcon() {
+  return (
+    <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round">
+      <path d="M4 5h12M10 5v10" />
+    </svg>
+  )
+}
 export function CalloutIcon() {
   return (
     <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">

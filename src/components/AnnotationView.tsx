@@ -4,16 +4,24 @@ import type { Annotation } from '../types'
 const INK = 'var(--ink)'
 const FONT = "'IBM Plex Sans Condensed', sans-serif"
 
+// Só pra desenhar o contorno de seleção e posicionar a alça de rotação do texto livre — aproximação
+// por fórmula (sem medir o DOM), no mesmo espírito de groupLocalBounds/dimGeometry: não precisa ser
+// pixel-perfect, só o bastante pra alça não ficar em cima do texto.
+const LINE_HEIGHT_EM = 1.25
+const BASELINE_OFFSET_EM = 0.32
+const AVG_CHAR_WIDTH_EM = 0.56
+
 interface Props {
   ann: Annotation
   index: number
   selected: boolean
   onPointerDownPrimary: (e: React.PointerEvent) => void
   onPointerDownSecondary?: (e: React.PointerEvent) => void
+  onPointerDownRotate?: (e: React.PointerEvent) => void
   onDoubleClick?: (e: React.MouseEvent) => void
 }
 
-export function AnnotationView({ ann, index, selected, onPointerDownPrimary, onPointerDownSecondary, onDoubleClick }: Props) {
+export function AnnotationView({ ann, index, selected, onPointerDownPrimary, onPointerDownSecondary, onPointerDownRotate, onDoubleClick }: Props) {
   const col = selected ? 'var(--accent)' : INK
 
   if (ann.kind === 'marker') {
@@ -45,6 +53,59 @@ export function AnnotationView({ ann, index, selected, onPointerDownPrimary, onP
         >
           {ann.text}
         </text>
+      </g>
+    )
+  }
+
+  if (ann.kind === 'text') {
+    const lines = ann.text.split('\n')
+    const startEm = BASELINE_OFFSET_EM - ((lines.length - 1) * LINE_HEIGHT_EM) / 2
+    const maxLen = Math.max(1, ...lines.map((l) => l.length))
+    const halfW = (ann.size * AVG_CHAR_WIDTH_EM * maxLen) / 2 + ann.size * 0.15
+    const halfH = (ann.size * ((lines.length - 1) * LINE_HEIGHT_EM + 1)) / 2
+    const handleY = -halfH - ann.size * 0.6 - 3
+
+    return (
+      <g data-ann={ann.id} data-kind={ann.kind} transform={`translate(${ann.pos.x} ${ann.pos.y}) rotate(${ann.rotation})`}>
+        {/* Alvo de clique invisível cobrindo todo o bloco — sem isso só as letras em si (não as
+            margens/entrelinhas) receberiam clique, igual ao motivo do hit-rect de grupo existir. */}
+        <rect data-role="hit" x={-halfW} y={-halfH - 1} width={halfW * 2} height={halfH * 2 + 2} fill="transparent" style={{ cursor: 'pointer' }} onPointerDown={onPointerDownPrimary} onDoubleClick={onDoubleClick} />
+        <text textAnchor="middle" fontSize={ann.size} fontWeight={500} fontFamily={FONT} fill={col} style={{ pointerEvents: 'none' }}>
+          {lines.map((line, i) => (
+            <tspan key={i} x={0} dy={`${i === 0 ? startEm : LINE_HEIGHT_EM}em`}>
+              {line || ' '}
+            </tspan>
+          ))}
+        </text>
+        {selected && (
+          <>
+            <rect
+              x={-halfW}
+              y={-halfH - 1}
+              width={halfW * 2}
+              height={halfH * 2 + 2}
+              fill="none"
+              stroke={col}
+              strokeWidth={0.4}
+              strokeDasharray="1.6,1.2"
+              vectorEffect="non-scaling-stroke"
+              style={{ pointerEvents: 'none' }}
+            />
+            <line x1={0} y1={-halfH - 1} x2={0} y2={handleY} stroke={col} strokeWidth={0.3} strokeDasharray="1,1" vectorEffect="non-scaling-stroke" style={{ pointerEvents: 'none' }} />
+            <circle
+              cx={0}
+              cy={handleY}
+              r={1.8}
+              fill="var(--paper)"
+              stroke={col}
+              strokeWidth={0.45}
+              vectorEffect="non-scaling-stroke"
+              style={{ cursor: 'grab' }}
+              data-role="rotate-handle"
+              onPointerDown={onPointerDownRotate}
+            />
+          </>
+        )}
       </g>
     )
   }

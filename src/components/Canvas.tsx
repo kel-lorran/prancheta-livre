@@ -29,8 +29,9 @@ type PendingPrompt =
   | { kind: 'calibrate'; sheetId: string; groupId: string; anchor: Point; dpaper: number; x: number; y: number }
   | { kind: 'fitScale'; sheetId: string; groupId: string; imageId: string; anchor: Point; dpaper: number; x: number; y: number }
   | { kind: 'dimText'; dimId: string; initial: string; x: number; y: number }
-  | { kind: 'annotationText'; annId: string; initial: string; x: number; y: number }
+  | { kind: 'annotationText'; annId: string; initial: string; multiline?: boolean; x: number; y: number }
   | { kind: 'draftText'; draftTool: DraftTool; groupId: string; points: Point[]; initial: string; x: number; y: number }
+  | { kind: 'freeText'; groupId: string; pos: Point; size: number; x: number; y: number }
   | { kind: 'titleBlock'; sheetId: string; field: 'sheetTitle' | 'date' | 'revision'; initial: string; x: number; y: number }
   | { kind: 'projectInfo'; x: number; y: number }
   | null
@@ -60,6 +61,7 @@ export function Canvas() {
   const cal = useProjectStore((s) => s.cal)
   const draft = useProjectStore((s) => s.draft)
   const crop = useProjectStore((s) => s.crop)
+  const freeTextSize = useProjectStore((s) => s.freeTextSize)
   const view = useProjectStore((s) => s.view)
 
   const setSheetPos = useProjectStore((s) => s.setSheetPos)
@@ -726,7 +728,7 @@ export function Canvas() {
     select({ type: 'annotation', id: annId })
     const ann = group.annotations.find((a) => a.id === annId)
     if (!ann) return
-    if (ann.kind === 'marker') {
+    if (ann.kind === 'marker' || ann.kind === 'text') {
       const orig = { x: ann.pos.x * group.w, y: ann.pos.y * group.h }
       beginDragField(e, sheet, group, annId, (dx, dy) => ({ pos: { x: orig.x + dx, y: orig.y + dy } }))
     } else if (ann.kind === 'leader') {
@@ -735,6 +737,26 @@ export function Canvas() {
     } else if (ann.kind === 'level') {
       const origY = ann.y * group.h
       beginDragField(e, sheet, group, annId, (_dx, dy) => ({ y: origY + dy }))
+    }
+  }
+  function onAnnotationRotateDown(e: React.PointerEvent, sheet: Sheet, group: ImageGroup, annId: string) {
+    if (e.button !== 0 || tool !== 'select' || crop) return
+    e.stopPropagation()
+    suppressClickRef.current = true
+    const ann = group.annotations.find((a) => a.id === annId)
+    if (!ann || ann.kind !== 'text') return
+    const center = { x: sheet.x + group.x + ann.pos.x * group.w, y: sheet.y + group.y + ann.pos.y * group.h }
+    dragRef.current = {
+      moved: false,
+      startX: e.clientX,
+      startY: e.clientY,
+      onMove(ev) {
+        const world = toWorld(ev.clientX, ev.clientY)
+        let angle = (Math.atan2(world.y - center.y, world.x - center.x) * 180) / Math.PI + 90
+        if (angle > 180) angle -= 360
+        if (angle < -180) angle += 360
+        patchAnnotation(annId, { rotation: ev.shiftKey ? Math.round(angle / 15) * 15 : Math.round(angle) })
+      },
     }
   }
   function onAnnotationSecondaryDown(e: React.PointerEvent, sheet: Sheet, group: ImageGroup, annId: string) {
@@ -755,7 +777,7 @@ export function Canvas() {
     const ann = group.annotations.find((a) => a.id === annId)
     if (!ann || ann.kind === 'marker') return
     select({ type: 'annotation', id: annId })
-    setPrompt({ kind: 'annotationText', annId, initial: ann.text, x: e.clientX - 40, y: e.clientY - 40 })
+    setPrompt({ kind: 'annotationText', annId, initial: ann.text, multiline: ann.kind === 'text', x: e.clientX - 40, y: e.clientY - 40 })
   }
 
   function onTitleBlockEdit(e: React.MouseEvent, sheet: Sheet, field: 'sheetTitle' | 'date' | 'revision', current: string) {
@@ -799,6 +821,10 @@ export function Canvas() {
     }
     if (tool === 'marker') {
       handleMarkerClick(e)
+      return
+    }
+    if (tool === 'text') {
+      handleFreeTextClick(e)
       return
     }
     if (tool === 'leader' || tool === 'level') {
@@ -933,6 +959,19 @@ export function Canvas() {
     addAnnotation(group.id, { kind: 'marker', pos: { x: pt.x - sheet.x - group.x, y: pt.y - sheet.y - group.y } })
   }
 
+  function handleFreeTextClick(e: React.MouseEvent) {
+    const pt = toWorld(e.clientX, e.clientY)
+    const sheet = sheetAtWorldPoint(sheets, pt)
+    if (!sheet) return
+    const group = topGroupAt(sheet, pt)
+    if (!group) {
+      warn('Clique sobre um grupo de imagem.')
+      return
+    }
+    const pos = { x: pt.x - sheet.x - group.x, y: pt.y - sheet.y - group.y }
+    setPrompt({ kind: 'freeText', groupId: group.id, pos, size: freeTextSize, x: e.clientX + 12, y: e.clientY + 12 })
+  }
+
   function handleDraftClick(e: React.MouseEvent) {
     const pt = toWorld(e.clientX, e.clientY)
     const sheet = sheetAtWorldPoint(sheets, pt)
@@ -1015,6 +1054,12 @@ export function Canvas() {
       }
       setPrompt(null)
       cancelDraft()
+      return
+    }
+    if (prompt?.kind === 'freeText') {
+      const text = value.trim()
+      if (text) addAnnotation(prompt.groupId, { kind: 'text', pos: prompt.pos, text, size: prompt.size, rotation: 0 })
+      setPrompt(null)
       return
     }
   }
@@ -1215,6 +1260,7 @@ export function Canvas() {
                   onDimDoubleClick,
                   onAnnotationPrimaryDown,
                   onAnnotationSecondaryDown,
+                  onAnnotationRotateDown,
                   onAnnotationDoubleClick,
                   onTitleBlockEdit,
                   onCropVertexPointerDown,
@@ -1267,8 +1313,9 @@ export function Canvas() {
       {prompt?.kind === 'calibrate' && <CalibratePrompt mode="group" x={prompt.x} y={prompt.y} onConfirm={handleCalibrateConfirm} onCancel={handleCalibrateCancel} />}
       {prompt?.kind === 'fitScale' && <CalibratePrompt mode="member" x={prompt.x} y={prompt.y} onConfirm={handleCalibrateConfirm} onCancel={handleCalibrateCancel} />}
       {(prompt?.kind === 'dimText' || prompt?.kind === 'annotationText' || prompt?.kind === 'titleBlock' || prompt?.kind === 'draftText') && (
-        <TextPrompt x={prompt.x} y={prompt.y} initial={prompt.initial} onConfirm={handleTextConfirm} onCancel={handleTextCancel} />
+        <TextPrompt x={prompt.x} y={prompt.y} initial={prompt.initial} multiline={prompt.kind === 'annotationText' && prompt.multiline} onConfirm={handleTextConfirm} onCancel={handleTextCancel} />
       )}
+      {prompt?.kind === 'freeText' && <TextPrompt x={prompt.x} y={prompt.y} initial="" multiline onConfirm={handleTextConfirm} onCancel={handleTextCancel} />}
       {prompt?.kind === 'projectInfo' && <ProjectInfoPrompt x={prompt.x} y={prompt.y} initial={project} onConfirm={handleProjectInfoConfirm} onCancel={() => setPrompt(null)} />}
       {menu && <ContextMenu x={menu.x} y={menu.y} items={menu.items} onClose={() => setMenu(null)} />}
       {crop && (
