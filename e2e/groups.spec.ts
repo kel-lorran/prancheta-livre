@@ -2,7 +2,7 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { test, expect } from '@playwright/test'
 import { clickInSheet, dragBy, dragTo, fitToScreen, gotoApp, sheetBox, storeState } from './helpers'
-import type { ImageGroup, Sheet } from '../src/types'
+import type { ImageGroup, Point, Sheet } from '../src/types'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const FIXTURE_PNG = path.join(__dirname, 'fixtures', 'sample-plan.png')
@@ -96,6 +96,48 @@ test('crops an image via the right-click menu, then edits and removes the mask',
 
   await group.click({ button: 'right' })
   await expect(page.locator('.context-menu button:has-text("Aplicar máscara")')).toBeVisible()
+})
+
+test('crops an image while a second group overlaps it (regression: the group underneath swallowed the mask clicks)', async ({ page }) => {
+  await gotoApp(page)
+  await fitToScreen(page)
+  const box = await sheetBox(page)
+  const groups = page.locator('g[data-testid="group"]')
+
+  // cola uma cópia por cima (desloca só +12,+12mm — o grupo original é bem maior, então a cópia
+  // cobre quase toda a área dele, inclusive onde os pontos da máscara vão ser clicados)
+  await groups.first().click()
+  await page.keyboard.press('Control+c')
+  await page.keyboard.press('Control+v')
+  await expect(groups).toHaveCount(2)
+
+  const beforeCrop = await storeState<{ sheets: Sheet[] }>(page)
+  const pastedGroupId = (beforeCrop.sheets[0].groups[1] as ImageGroup).id
+  const pastedGroupOrig = { x: (beforeCrop.sheets[0].groups[1] as ImageGroup).x, y: (beforeCrop.sheets[0].groups[1] as ImageGroup).y }
+
+  // clica num canto do grupo original que a cópia colada NÃO cobre, pra abrir o menu de contexto
+  // certo (a cópia, por cima na pilha, receberia o clique se caísse na área sobreposta)
+  await page.mouse.click(box.x + box.width * 0.29, box.y + box.height * 0.28, { button: 'right' })
+  await page.locator('.context-menu button:has-text("Aplicar máscara")').click()
+
+  const before = await storeState<{ crop: { points: Point[] } | null }>(page)
+  expect(before.crop?.points.length ?? 0).toBe(0)
+
+  // esses pontos caem dentro da imagem do grupo original E dentro da área da cópia sobreposta —
+  // antes da correção, o hit-rect da cópia (que fica por cima) engolia o clique e movia/selecionava
+  // ela em vez de virar ponto do polígono da máscara
+  await clickInSheet(page, box, 0.4, 0.35)
+  await clickInSheet(page, box, 0.55, 0.35)
+  await clickInSheet(page, box, 0.5, 0.5)
+
+  const after = await storeState<{ sheets: Sheet[]; crop: { points: Point[] } | null; selection: { type: string | null; id: string | null } }>(page)
+  expect(after.crop?.points.length ?? 0).toBe(3)
+  // a cópia sobreposta não pode ter sido selecionada nem arrastada pelos cliques da máscara
+  expect(after.selection.id).not.toBe(pastedGroupId)
+  const pastedAfter = after.sheets[0].groups[1] as ImageGroup
+  expect({ x: pastedAfter.x, y: pastedAfter.y }).toEqual(pastedGroupOrig)
+
+  await page.keyboard.press('Enter')
 })
 
 test('crops an image after entering its group (regression: the image used to swallow the crop clicks)', async ({ page }) => {

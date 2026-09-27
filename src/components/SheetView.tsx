@@ -173,10 +173,12 @@ function GroupView({ sheet, group, tool, selection, multiSelection, isOpen, mark
         height={visualBounds.maxY - visualBounds.minY + 2}
         fill="transparent"
         style={{
-          cursor: isOpen ? undefined : tool === 'select' ? 'move' : undefined,
-          // Enquanto um recorte estiver em edição neste grupo, o hit-rect não pode engolir os
-          // cliques que deveriam virar pontos do polígono.
-          pointerEvents: isOpen || tool !== 'select' || (crop && crop.groupId === group.id) ? 'none' : 'all',
+          cursor: isOpen || crop ? undefined : tool === 'select' ? 'move' : undefined,
+          // Enquanto qualquer recorte estiver em edição, nenhum grupo pode reagir a clique — mesmo
+          // um grupo diferente do que está sendo recortado, se estiver sobreposto por baixo, senão
+          // ele engole os cliques que deveriam virar pontos do polígono (crop não troca a `tool`
+          // pra algo != 'select', então esse hit-rect ficaria ativo normalmente).
+          pointerEvents: isOpen || tool !== 'select' || crop ? 'none' : 'all',
         }}
         onPointerDown={(e) => handlers.onGroupPointerDown(e, sheet, group)}
         onDoubleClick={(e) => handlers.onGroupDoubleClick(e, sheet, group)}

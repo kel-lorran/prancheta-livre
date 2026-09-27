@@ -598,7 +598,7 @@ export function Canvas() {
   }
 
   function onGroupPointerDown(e: React.PointerEvent, sheet: Sheet, group: ImageGroup) {
-    if (e.button !== 0 || tool !== 'select') return
+    if (e.button !== 0 || tool !== 'select' || crop) return
     e.stopPropagation()
     suppressClickRef.current = true
     if (openGroupId && openGroupId !== group.id) exitGroup()
@@ -615,7 +615,7 @@ export function Canvas() {
     beginMoveGroup(e, group)
   }
   function onGroupHandlePointerDown(e: React.PointerEvent, sheet: Sheet, group: ImageGroup, corner: Corner) {
-    if (e.button !== 0 || tool !== 'select') return
+    if (e.button !== 0 || tool !== 'select' || crop) return
     e.stopPropagation()
     suppressClickRef.current = true
     beginResizeGroup(e, sheet, group, corner)
@@ -648,7 +648,7 @@ export function Canvas() {
   }
 
   function onMemberPointerDown(e: React.PointerEvent, sheet: Sheet, group: ImageGroup, image: SheetImage) {
-    if (e.button !== 0 || tool !== 'select') return
+    if (e.button !== 0 || tool !== 'select' || crop) return
     e.stopPropagation()
     suppressClickRef.current = true
     if (e.altKey) {
@@ -664,7 +664,7 @@ export function Canvas() {
     beginMoveMember(e, group, image)
   }
   function onMemberHandlePointerDown(e: React.PointerEvent, sheet: Sheet, group: ImageGroup, image: SheetImage, corner: Corner) {
-    if (e.button !== 0 || tool !== 'select') return
+    if (e.button !== 0 || tool !== 'select' || crop) return
     e.stopPropagation()
     suppressClickRef.current = true
     beginResizeMember(e, sheet, group, image, corner)
@@ -694,7 +694,7 @@ export function Canvas() {
   }
 
   function onDimPointerDown(e: React.PointerEvent, sheet: Sheet, group: ImageGroup, dimId: string) {
-    if (e.button !== 0 || tool !== 'select') return
+    if (e.button !== 0 || tool !== 'select' || crop) return
     e.stopPropagation()
     suppressClickRef.current = true
     if (e.shiftKey) {
@@ -716,7 +716,7 @@ export function Canvas() {
   }
 
   function onAnnotationPrimaryDown(e: React.PointerEvent, sheet: Sheet, group: ImageGroup, annId: string) {
-    if (e.button !== 0 || tool !== 'select') return
+    if (e.button !== 0 || tool !== 'select' || crop) return
     e.stopPropagation()
     suppressClickRef.current = true
     if (e.shiftKey) {
@@ -738,7 +738,7 @@ export function Canvas() {
     }
   }
   function onAnnotationSecondaryDown(e: React.PointerEvent, sheet: Sheet, group: ImageGroup, annId: string) {
-    if (e.button !== 0 || tool !== 'select') return
+    if (e.button !== 0 || tool !== 'select' || crop) return
     e.stopPropagation()
     suppressClickRef.current = true
     select({ type: 'annotation', id: annId })
