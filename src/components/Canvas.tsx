@@ -652,15 +652,15 @@ export function Canvas() {
     if (openGroupId !== group.id) items.push({ label: 'Entrar no grupo', onSelect: () => enterGroup(group.id) })
     if (group.images.length === 1) {
       const im = group.images[0]
-      items.push(im.crop ? { label: 'Editar recorte', onSelect: () => startCrop(sheet.id, group.id, im.id, im.crop!) } : { label: 'Recortar', onSelect: () => startCrop(sheet.id, group.id, im.id) })
-      if (im.crop) items.push({ label: 'Remover recorte', onSelect: () => clearCrop(group.id, im.id) })
+      items.push(im.crop ? { label: 'Editar máscara', onSelect: () => startCrop(sheet.id, group.id, im.id, im.crop!) } : { label: 'Aplicar máscara', onSelect: () => startCrop(sheet.id, group.id, im.id) })
+      if (im.crop) items.push({ label: 'Remover máscara', onSelect: () => clearCrop(group.id, im.id) })
     }
     const selectedGroupIds = [...new Set([...(selection.type === 'group' ? [selection.id] : []), ...multiSelection.filter((i) => i.type === 'group').map((i) => i.id), group.id])]
     if (selectedGroupIds.length >= 2) items.push({ label: 'Agrupar', onSelect: () => groupSelectionAction(selectedGroupIds) })
     if (group.images.length > 1) items.push({ label: 'Desagrupar', onSelect: () => ungroupSelection(group.id) })
     items.push({ label: group.locked ? 'Destravar grupo' : 'Travar grupo', onSelect: () => useProjectStore.getState().toggleGroupLock(group.id) })
     items.push({ label: 'Copiar', onSelect: () => { select({ type: 'group', id: group.id }); copySelection() } })
-    items.push({ label: 'Cortar', onSelect: () => { select({ type: 'group', id: group.id }); cutSelection() } })
+    items.push({ label: 'Recortar', onSelect: () => { select({ type: 'group', id: group.id }); cutSelection() } })
     items.push({ label: 'Excluir grupo', danger: true, onSelect: () => { if (confirm('Excluir este grupo? Cotas e anotações dele também serão removidas.')) deleteGroup(group.id) } })
     setMenu({ x: e.clientX, y: e.clientY, items })
   }
@@ -692,8 +692,8 @@ export function Canvas() {
     e.stopPropagation()
     select({ type: 'member', id: image.id })
     const items: ContextMenuItem[] = []
-    items.push(image.crop ? { label: 'Editar recorte', onSelect: () => startCrop(sheet.id, group.id, image.id, image.crop!) } : { label: 'Recortar', onSelect: () => startCrop(sheet.id, group.id, image.id) })
-    if (image.crop) items.push({ label: 'Remover recorte', onSelect: () => clearCrop(group.id, image.id) })
+    items.push(image.crop ? { label: 'Editar máscara', onSelect: () => startCrop(sheet.id, group.id, image.id, image.crop!) } : { label: 'Aplicar máscara', onSelect: () => startCrop(sheet.id, group.id, image.id) })
+    if (image.crop) items.push({ label: 'Remover máscara', onSelect: () => clearCrop(group.id, image.id) })
     items.push({
       label: 'Ajustar à escala do grupo',
       disabled: !group.realMetersPerMm,
@@ -706,7 +706,7 @@ export function Canvas() {
     items.push({ label: 'Trazer para frente', onSelect: () => reorderMember(group.id, image.id, 'front') })
     items.push({ label: 'Enviar para trás', onSelect: () => reorderMember(group.id, image.id, 'back') })
     items.push({ label: 'Copiar', onSelect: () => { select({ type: 'member', id: image.id }); copySelection() } })
-    items.push({ label: 'Cortar', onSelect: () => { select({ type: 'member', id: image.id }); cutSelection() } })
+    items.push({ label: 'Recortar', onSelect: () => { select({ type: 'member', id: image.id }); cutSelection() } })
     items.push({ label: 'Excluir imagem', danger: true, onSelect: () => deleteMember(group.id, image.id) })
     setMenu({ x: e.clientX, y: e.clientY, items })
   }
@@ -1291,10 +1291,10 @@ export function Canvas() {
       {menu && <ContextMenu x={menu.x} y={menu.y} items={menu.items} onClose={() => setMenu(null)} />}
       {crop && (
         <div className="crop-hint">
-          Clique pra adicionar pontos ao recorte (mínimo 3) · Enter ou clique fora confirma · Esc cancela
+          Clique pra adicionar pontos à máscara (mínimo 3) · Enter ou clique fora confirma · Esc cancela
           {crop.points.length >= 3 && (
             <button className="ok" onClick={commitCrop}>
-              Concluir recorte
+              Concluir máscara
             </button>
           )}
         </div>

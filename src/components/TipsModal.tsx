@@ -16,9 +16,9 @@ const SECTIONS: { title: string; rows: [string, string][] }[] = [
     rows: [
       ['Duplo clique / Enter', 'Entra no grupo — clique numa imagem pra selecioná-la'],
       ['Esc', 'Sai do grupo (ou cancela a ferramenta atual)'],
-      ['Botão direito', 'Recortar, ajustar à escala, trazer pra frente/trás, excluir…'],
+      ['Botão direito', 'Aplicar máscara, ajustar à escala, trazer pra frente/trás, excluir…'],
       ['Ctrl+G / Ctrl+Shift+G', 'Agrupar / desagrupar seleção'],
-      ['Ctrl+C / Ctrl+X / Ctrl+V', 'Copiar / cortar / colar imagem ou grupo'],
+      ['Ctrl+C / Ctrl+X / Ctrl+V', 'Copiar / recortar / colar imagem ou grupo'],
       ['Ctrl+Shift+V', 'Colar no lugar (mesmas coordenadas do original)'],
     ],
   },

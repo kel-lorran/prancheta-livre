@@ -25,25 +25,45 @@ test('entering a group scopes "Importar imagem" to it, adding a second member', 
   await expect(group.locator('image')).toHaveCount(2)
 })
 
-test('crops an image via the right-click menu, then edits and removes the crop', async ({ page }) => {
+test('crops an image via the right-click menu, then edits and removes the mask', async ({ page }) => {
   await gotoApp(page)
   await fitToScreen(page)
   const box = await sheetBox(page)
   const group = page.locator('g[data-testid="group"]')
 
   await group.click({ button: 'right' })
-  await page.locator('.context-menu button:has-text("Recortar")').click()
+  await page.locator('.context-menu button:has-text("Aplicar máscara")').click()
   await clickInSheet(page, box, 0.3, 0.3)
   await clickInSheet(page, box, 0.5, 0.3)
   await clickInSheet(page, box, 0.4, 0.5)
   await page.keyboard.press('Enter')
 
   await group.click({ button: 'right' })
-  await expect(page.locator('.context-menu button:has-text("Editar recorte")')).toBeVisible()
-  await page.locator('.context-menu button:has-text("Remover recorte")').click()
+  await expect(page.locator('.context-menu button:has-text("Editar máscara")')).toBeVisible()
+  await page.locator('.context-menu button:has-text("Remover máscara")').click()
 
   await group.click({ button: 'right' })
-  await expect(page.locator('.context-menu button:has-text("Recortar")')).toBeVisible()
+  await expect(page.locator('.context-menu button:has-text("Aplicar máscara")')).toBeVisible()
+})
+
+test('crops an image after entering its group (regression: the image used to swallow the crop clicks)', async ({ page }) => {
+  await gotoApp(page)
+  await fitToScreen(page)
+  const box = await sheetBox(page)
+  const group = page.locator('g[data-testid="group"]')
+
+  await group.dblclick()
+  await group.click({ button: 'right' })
+  await page.locator('.context-menu button:has-text("Aplicar máscara")').click()
+  await clickInSheet(page, box, 0.3, 0.3)
+  await clickInSheet(page, box, 0.5, 0.3)
+  await clickInSheet(page, box, 0.4, 0.5)
+  await page.keyboard.press('Enter')
+
+  // depois de aplicada, a área clicável da imagem encolheu pro polígono do recorte — clica no
+  // centroide do triângulo, não no centro do grupo (que agora está fora da área visível)
+  await page.mouse.click(box.x + box.width * 0.4, box.y + box.height * 0.367, { button: 'right' })
+  await expect(page.locator('.context-menu button:has-text("Editar máscara")')).toBeVisible()
 })
 
 test('cancels a crop in progress with Escape without applying anything', async ({ page }) => {
@@ -53,13 +73,13 @@ test('cancels a crop in progress with Escape without applying anything', async (
   const group = page.locator('g[data-testid="group"]')
 
   await group.click({ button: 'right' })
-  await page.locator('.context-menu button:has-text("Recortar")').click()
+  await page.locator('.context-menu button:has-text("Aplicar máscara")').click()
   await clickInSheet(page, box, 0.3, 0.3)
   await clickInSheet(page, box, 0.5, 0.3)
   await page.keyboard.press('Escape')
 
   await group.click({ button: 'right' })
-  await expect(page.locator('.context-menu button:has-text("Recortar")')).toBeVisible()
+  await expect(page.locator('.context-menu button:has-text("Aplicar máscara")')).toBeVisible()
 })
 
 test('agrupar merges two independent groups, desagrupar splits them back', async ({ page }) => {

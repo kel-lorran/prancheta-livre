@@ -251,9 +251,15 @@ function MemberView({ sheet, group, image, tool, selectable, selected, crop, han
         height={image.h}
         preserveAspectRatio="none"
         clipPath={image.crop && !isCropping ? `url(#${clipId})` : undefined}
-        style={{ cursor: selectable ? (tool === 'select' ? 'move' : 'crosshair') : undefined, pointerEvents: selectable ? 'all' : 'none' }}
-        onPointerDown={(e) => selectable && handlers.onMemberPointerDown(e, sheet, group, image)}
-        onContextMenu={(e) => selectable && handlers.onMemberContextMenu(e, sheet, group, image)}
+        style={{
+          cursor: selectable && !isCropping ? (tool === 'select' ? 'move' : 'crosshair') : undefined,
+          // Enquanto o recorte desta imagem está em edição, o próprio elemento não pode capturar o
+          // clique — ele precisa chegar ao stage pra virar um ponto do polígono (mesmo problema que
+          // o hit-rect do grupo tinha).
+          pointerEvents: selectable && !isCropping ? 'all' : 'none',
+        }}
+        onPointerDown={(e) => selectable && !isCropping && handlers.onMemberPointerDown(e, sheet, group, image)}
+        onContextMenu={(e) => selectable && !isCropping && handlers.onMemberContextMenu(e, sheet, group, image)}
       />
 
       {selected && !isCropping && (

@@ -20,7 +20,7 @@ export function StatusBar({ warning, coords }: Props) {
   const hint = warning ?? computeHint()
 
   function computeHint(): string {
-    if (crop) return `Recorte: clique pra adicionar pontos (${crop.points.length} até agora, mínimo 3) — Enter ou clique fora confirma, Esc cancela.`
+    if (crop) return `Máscara: clique pra adicionar pontos (${crop.points.length} até agora, mínimo 3) — Enter ou clique fora confirma, Esc cancela.`
     if (multiSelection.length) return `${multiSelection.length} itens selecionados — Delete remove todos, Shift+clique ajusta a seleção.`
     if (tool === 'select') {
       if (selection.type === 'dim') return 'Cota selecionada — duplo clique no valor para sobrescrever o texto, Delete para remover.'
@@ -28,7 +28,7 @@ export function StatusBar({ warning, coords }: Props) {
       if (selection.type === 'member') {
         const found = findMemberById(sheets, selection.id)
         const locked = found?.image.locked
-        return 'Imagem selecionada — arraste para mover' + (locked ? '. Travada — destrave para reajustar.' : ', puxe os cantos para escalar.') + ' Botão direito: recortar.'
+        return 'Imagem selecionada — arraste para mover' + (locked ? '. Travada — destrave para reajustar.' : ', puxe os cantos para escalar.') + ' Botão direito: aplicar máscara.'
       }
       if (selection.type === 'group') {
         return openGroupId === selection.id

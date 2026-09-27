@@ -112,11 +112,13 @@ Sem backend em produção. Deploy estático via GitHub Pages.
   camadas do grupo.
 - Um modo só: **polígono livre de N pontos** — retângulo é só um caso particular (4
   cliques em ângulo reto), não precisa de um segundo modelo de dado nem modo de UI.
-- Entrada via **botão direito na imagem → Recortar** (ou Editar recorte/Remover
-  recorte se já existe um) — não é uma ferramenta persistente na barra. Clique
-  adiciona vértice, Enter/clicar fora/trocar de ferramenta confirma, Esc cancela.
-  Editando um recorte existente: arrastar vértice move, clicar no meio de uma
-  aresta insere ponto, duplo-clique remove.
+- Entrada via **botão direito na imagem → Aplicar máscara** (ou Editar máscara/
+  Remover máscara se já existe uma) — não é uma ferramenta persistente na barra.
+  Chamado de "máscara" na UI, não "recorte", pra não colidir com Recortar do
+  Ctrl+X (área de transferência) no mesmo menu de contexto. Clique adiciona
+  vértice, Enter/clicar fora/trocar de ferramenta confirma, Esc cancela. Editando
+  uma máscara existente: arrastar vértice move, clicar no meio de uma aresta
+  insere ponto, duplo-clique remove.
 - Nunca afeta cota/anotação — não mexe em x/y/w/h/realMetersPerMm de nada, é só uma
   máscara visual por cima.
 
