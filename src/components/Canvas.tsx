@@ -480,7 +480,7 @@ export function Canvas() {
           : { x: orig.x, y: orig.y }
   }
 
-  function beginResizeGroup(e: React.PointerEvent, group: ImageGroup, corner: Corner) {
+  function beginResizeGroup(e: React.PointerEvent, sheet: Sheet, group: ImageGroup, corner: Corner) {
     useProjectStore.getState().commitHistory()
     const orig = { x: group.x, y: group.y, w: group.w, h: group.h }
     const anchor = cornerAnchor(corner, orig)
@@ -490,7 +490,10 @@ export function Canvas() {
       startX: e.clientX,
       startY: e.clientY,
       onMove(ev) {
-        const cur = toWorld(ev.clientX, ev.clientY)
+        const world = toWorld(ev.clientX, ev.clientY)
+        // orig/anchor estão em mm sheet-local (relativos à origem da prancha) — o cursor vem em
+        // mm de mundo, então precisa descontar a posição da própria prancha antes de comparar.
+        const cur = { x: world.x - sheet.x, y: world.y - sheet.y }
         let neww = Math.abs(cur.x - anchor.x)
         let newh = neww / aspect
         neww = Math.max(neww, 10)
@@ -513,7 +516,7 @@ export function Canvas() {
     }
   }
 
-  function beginResizeMember(e: React.PointerEvent, group: ImageGroup, image: SheetImage, corner: Corner) {
+  function beginResizeMember(e: React.PointerEvent, sheet: Sheet, group: ImageGroup, image: SheetImage, corner: Corner) {
     useProjectStore.getState().commitHistory()
     const orig = { x: image.x, y: image.y, w: image.w, h: image.h }
     const anchor = cornerAnchor(corner, orig)
@@ -523,7 +526,9 @@ export function Canvas() {
       startX: e.clientX,
       startY: e.clientY,
       onMove(ev) {
-        const cur = toWorld(ev.clientX, ev.clientY)
+        const world = toWorld(ev.clientX, ev.clientY)
+        // orig/anchor estão em mm locais ao grupo — descontar prancha + origem do grupo antes de comparar.
+        const cur = { x: world.x - sheet.x - group.x, y: world.y - sheet.y - group.y }
         let neww = Math.abs(cur.x - anchor.x)
         let newh = neww / aspect
         neww = Math.max(neww, 5)
@@ -632,11 +637,11 @@ export function Canvas() {
     select({ type: 'group', id: group.id })
     beginMoveGroup(e, group)
   }
-  function onGroupHandlePointerDown(e: React.PointerEvent, _sheet: Sheet, group: ImageGroup, corner: Corner) {
+  function onGroupHandlePointerDown(e: React.PointerEvent, sheet: Sheet, group: ImageGroup, corner: Corner) {
     if (e.button !== 0 || tool !== 'select') return
     e.stopPropagation()
     suppressClickRef.current = true
-    beginResizeGroup(e, group, corner)
+    beginResizeGroup(e, sheet, group, corner)
   }
   function onGroupDoubleClick(e: React.MouseEvent, _sheet: Sheet, group: ImageGroup) {
     if (tool !== 'select') return
@@ -681,11 +686,11 @@ export function Canvas() {
     select({ type: 'member', id: image.id })
     beginMoveMember(e, group, image)
   }
-  function onMemberHandlePointerDown(e: React.PointerEvent, _sheet: Sheet, group: ImageGroup, image: SheetImage, corner: Corner) {
+  function onMemberHandlePointerDown(e: React.PointerEvent, sheet: Sheet, group: ImageGroup, image: SheetImage, corner: Corner) {
     if (e.button !== 0 || tool !== 'select') return
     e.stopPropagation()
     suppressClickRef.current = true
-    beginResizeMember(e, group, image, corner)
+    beginResizeMember(e, sheet, group, image, corner)
   }
   function onMemberContextMenu(e: React.MouseEvent, sheet: Sheet, group: ImageGroup, image: SheetImage) {
     e.preventDefault()

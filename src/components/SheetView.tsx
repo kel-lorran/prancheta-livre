@@ -1,5 +1,6 @@
 import type React from 'react'
 import { dimGeometry } from '../lib/dimGeometry'
+import { groupLocalBounds } from '../lib/groupGeometry'
 import { dimsInGroupMm, annotationsInGroupMm } from '../state/projectStore'
 import type { CalState, CotaState, CropState, DimGeometryMode, DraftState, ImageGroup, Point, ProjectInfo, Selection, Sheet, SheetImage, ToolName } from '../types'
 import type { SelectionItem } from '../state/projectStore'
@@ -127,6 +128,9 @@ function GroupView({ sheet, group, tool, selection, multiSelection, isOpen, mark
   const isGroupSelected = (selection.type === 'group' && selection.id === group.id) || isSel(multiSelection, 'group', group.id)
   const dimsMm = dimsInGroupMm(group)
   const annsMm = annotationsInGroupMm(group)
+  // Contorno de seleção e área clicável cobrem o frame declarado + a posição real de cada membro —
+  // um membro movido/redimensionado dentro do grupo pode passar do frame original.
+  const visualBounds = groupLocalBounds(group)
   let localMarkerIndex = markerIndexStart - 1
 
   return (
@@ -147,7 +151,7 @@ function GroupView({ sheet, group, tool, selection, multiSelection, isOpen, mark
 
       {!isOpen && isGroupSelected && (
         <>
-          <rect x={0} y={0} width={group.w} height={group.h} fill="none" stroke="var(--accent)" strokeWidth={0.6} strokeDasharray="2,1.4" vectorEffect="non-scaling-stroke" style={{ pointerEvents: 'none' }} />
+          <rect x={visualBounds.minX} y={visualBounds.minY} width={visualBounds.maxX - visualBounds.minX} height={visualBounds.maxY - visualBounds.minY} fill="none" stroke="var(--accent)" strokeWidth={0.6} strokeDasharray="2,1.4" vectorEffect="non-scaling-stroke" style={{ pointerEvents: 'none' }} />
           {!group.locked &&
             (
               [
@@ -163,10 +167,10 @@ function GroupView({ sheet, group, tool, selection, multiSelection, isOpen, mark
       )}
 
       <rect
-        x={-1}
-        y={-1}
-        width={group.w + 2}
-        height={group.h + 2}
+        x={visualBounds.minX - 1}
+        y={visualBounds.minY - 1}
+        width={visualBounds.maxX - visualBounds.minX + 2}
+        height={visualBounds.maxY - visualBounds.minY + 2}
         fill="transparent"
         style={{
           cursor: isOpen ? undefined : tool === 'select' ? 'move' : undefined,

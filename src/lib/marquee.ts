@@ -1,4 +1,5 @@
 import { annotationsInGroupMm, dimsInGroupMm } from '../state/projectStore'
+import { groupLocalBounds } from './groupGeometry'
 import type { Annotation, ImageGroup, Sheet } from '../types'
 
 export interface Box {
@@ -16,9 +17,8 @@ export function boxContains(outer: Box, inner: Box): boolean {
 }
 
 export function groupWorldBox(sheet: Sheet, group: ImageGroup): Box {
-  const x = sheet.x + group.x
-  const y = sheet.y + group.y
-  return { minX: x, minY: y, maxX: x + group.w, maxY: y + group.h }
+  const b = groupLocalBounds(group)
+  return { minX: sheet.x + group.x + b.minX, minY: sheet.y + group.y + b.minY, maxX: sheet.x + group.x + b.maxX, maxY: sheet.y + group.y + b.maxY }
 }
 
 function ptsBox(pts: { x: number; y: number }[], pad = 1): Box {
