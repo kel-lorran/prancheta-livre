@@ -75,7 +75,14 @@ export async function importProjectZip(file: File): Promise<{ sheets: Sheet[]; p
               g.images.map(async (im) => {
                 const entry = zip.file(im.file)
                 if (!entry) return null
-                const blob = await entry.async('blob')
+                const rawBlob = await entry.async('blob')
+                // JSZip não preserva o Content-Type original do arquivo — o blob sai como
+                // "application/octet-stream" genérico. O navegador tolera isso ao renderizar
+                // <image> (fareja os bytes), mas o svg2pdf.js valida o prefixo MIME da data URL
+                // antes de tentar embutir a imagem no PDF e rejeita com "Unsupported image URL".
+                // Força o tipo certo pela extensão gravada na exportação (ver exportProjectZip).
+                const mime = im.file.toLowerCase().endsWith('.jpg') || im.file.toLowerCase().endsWith('.jpeg') ? 'image/jpeg' : 'image/png'
+                const blob = new Blob([rawBlob], { type: mime })
                 const href = await blobToDataUrl(blob)
                 const { file: _file, ...rest } = im
                 return { ...rest, href } as SheetImage

@@ -61,3 +61,32 @@ test('PDF export actually draws dimensions, title block and free text (regressio
   // sem erro nenhum no console. "0 g"/"g" de verdade aparece antes do Tj quando está correto.
   expect(/\d Tr\b/.test(content)).toBe(false)
 })
+
+test('PDF export still works after a project is exported and re-imported (regression: JSZip blobs lose the image MIME type, svg2pdf then throws "Unsupported image URL")', async ({ page }) => {
+  await gotoApp(page)
+  await fitToScreen(page)
+
+  const zipDownloadPromise = page.waitForEvent('download')
+  await page.click('text=Exportar projeto')
+  const zipDownload = await zipDownloadPromise
+  const zipPath = await zipDownload.path()
+  if (!zipPath) throw new Error('download do .zip sem caminho local')
+
+  await page.setInputFiles('input[type="file"][accept=".zip"]', zipPath)
+  await expect(page.locator('g[data-testid="group"]')).toHaveCount(1)
+
+  const pageErrors: string[] = []
+  page.on('pageerror', (err) => pageErrors.push(err.message))
+
+  const pdfDownloadPromise = page.waitForEvent('download')
+  await page.click('text=Exportar PDF')
+  const pdfDownload = await pdfDownloadPromise
+  expect(pdfDownload.suggestedFilename()).toMatch(/\.pdf$/)
+
+  // o erro real era "Unsupported image URL: data:application/octet-stream;..." — o blob que sai
+  // do JSZip na reimportação perde o Content-Type da imagem (vira genérico), o <image> renderiza
+  // normal na tela (o navegador fareja os bytes), mas o svg2pdf.js valida o prefixo MIME da data
+  // URL antes de embutir a imagem no PDF e recusa.
+  expect(pageErrors.some((m) => m.includes('Unsupported image URL'))).toBe(false)
+  await expect(page.locator('#statusbar.warn')).toHaveCount(0)
+})
