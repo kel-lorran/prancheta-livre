@@ -40,10 +40,16 @@ const SVGNS = 'http://www.w3.org/2000/svg'
 function resolveCssVarColors(svgEl: SVGSVGElement): void {
   for (const el of svgEl.querySelectorAll('*')) {
     for (const attr of ['fill', 'stroke'] as const) {
-      const value = el.getAttribute(attr)
-      if (!value || !value.includes('var(')) continue
-      const resolved = getComputedStyle(el).getPropertyValue(attr)
-      if (resolved) el.setAttribute(attr, resolved)
+      try {
+        const value = el.getAttribute(attr)
+        if (!value || !value.includes('var(')) continue
+        const resolved = getComputedStyle(el).getPropertyValue(attr)
+        if (resolved) el.setAttribute(attr, resolved)
+      } catch (err) {
+        // um elemento estranho (projeto antigo, dado corrompido) não pode derrubar a exportação
+        // inteira — na pior hipótese esse traço específico fica sem cor resolvida.
+        console.warn('resolveCssVarColors: falha num elemento, seguindo em frente', el, err)
+      }
     }
   }
 }

@@ -1178,8 +1178,10 @@ export function Canvas() {
     try {
       const { exportPdf } = await import('../lib/pdfExport')
       await exportPdf(sheets, project)
-    } catch {
-      warn('Não foi possível gerar o PDF.')
+    } catch (err) {
+      console.error('Falha ao exportar PDF:', err)
+      const detail = err instanceof Error && err.message ? ` (${err.message})` : ''
+      warn(`Não foi possível gerar o PDF.${detail}`)
     }
   }
   async function handleExportProject() {
