@@ -34,7 +34,7 @@ export function DimensionView({ sheetId, dim, realMetersPerMm, selected, onPoint
         textAnchor="middle"
         dominantBaseline="central"
         fontFamily="'IBM Plex Sans Condensed', sans-serif"
-        fontWeight={600}
+        fontWeight="bold"
         transform={`rotate(${geo.angle} ${tx} ${ty})`}
       >
         {text}

@@ -30,6 +30,24 @@ const NOOP_HANDLERS: SheetHandlers = {
 
 const SVGNS = 'http://www.w3.org/2000/svg'
 
+/**
+ * svg2pdf.js não resolve var(--token) — fica com a string literal "var(--ink)" como valor de
+ * fill/stroke, que não é uma cor válida pra ele, e o traço/preenchimento simplesmente não é
+ * desenhado (sem erro nenhum no console). Isso apagava cota, anotação, texto livre e título da
+ * prancha inteiros do PDF exportado, sobrando só a imagem raster. Resolve pro valor computado de
+ * verdade (ex.: "rgb(26, 26, 26)") antes de entregar a árvore pro svg2pdf.
+ */
+function resolveCssVarColors(svgEl: SVGSVGElement): void {
+  for (const el of svgEl.querySelectorAll('*')) {
+    for (const attr of ['fill', 'stroke'] as const) {
+      const value = el.getAttribute(attr)
+      if (!value || !value.includes('var(')) continue
+      const resolved = getComputedStyle(el).getPropertyValue(attr)
+      if (resolved) el.setAttribute(attr, resolved)
+    }
+  }
+}
+
 function renderSheetSvg(sheet: Sheet, project: ProjectInfo, sheetNumber: number, sheetTotal: number): { svgEl: SVGSVGElement; cleanup: () => void } {
   const container = document.createElement('div')
   container.style.position = 'fixed'
@@ -63,6 +81,8 @@ function renderSheetSvg(sheet: Sheet, project: ProjectInfo, sheetNumber: number,
       />,
     )
   })
+
+  resolveCssVarColors(svgEl)
 
   return {
     svgEl,

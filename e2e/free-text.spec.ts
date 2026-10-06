@@ -25,8 +25,11 @@ test('adds a centered free-text label with a line break', async ({ page }) => {
 
   const g = page.locator('g[data-kind="text"]')
   await expect(g).toHaveCount(1)
-  await expect(g.locator('text')).toHaveAttribute('text-anchor', 'middle')
-  await expect(g.locator('tspan')).toHaveCount(2)
+  // uma <text> por linha (não <tspan> — svg2pdf.js não processa dy em tspan aninhado corretamente)
+  await expect(g.locator('text')).toHaveCount(2)
+  await expect(g.locator('text').first()).toHaveAttribute('text-anchor', 'middle')
+  await expect(g.locator('text').first()).toHaveText('SALA')
+  await expect(g.locator('text').nth(1)).toHaveText('ampla')
 
   const state = await storeState<{ sheets: Sheet[] }>(page)
   const ann = state.sheets[0].groups[0].annotations[0] as FreeTextAnnotation

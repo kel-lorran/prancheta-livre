@@ -28,7 +28,7 @@ export function AnnotationView({ ann, index, selected, onPointerDownPrimary, onP
     return (
       <g data-ann={ann.id} data-kind={ann.kind} style={{ cursor: 'pointer' }} onPointerDown={onPointerDownPrimary}>
         <circle cx={ann.pos.x} cy={ann.pos.y} r={3.2} fill="var(--paper)" stroke={col} strokeWidth={0.4} vectorEffect="non-scaling-stroke" />
-        <text x={ann.pos.x} y={ann.pos.y} fill={col} fontSize={3} fontWeight={600} fontFamily={FONT} textAnchor="middle" dominantBaseline="central">
+        <text x={ann.pos.x} y={ann.pos.y} fill={col} fontSize={3} fontWeight="bold" fontFamily={FONT} textAnchor="middle" dominantBaseline="central">
           {index + 1}
         </text>
       </g>
@@ -46,7 +46,7 @@ export function AnnotationView({ ann, index, selected, onPointerDownPrimary, onP
           fill={col}
           fontSize={2.8}
           fontFamily={FONT}
-          fontWeight={500}
+          fontWeight="bold"
           dominantBaseline="central"
           style={{ cursor: 'pointer' }}
           onPointerDown={onPointerDownSecondary}
@@ -58,8 +58,14 @@ export function AnnotationView({ ann, index, selected, onPointerDownPrimary, onP
   }
 
   if (ann.kind === 'text') {
+    // Uma <text> por linha, cada uma com y absoluto (em vez de <tspan>/dy encadeados) — svg2pdf.js
+    // não processa dy em tspan aninhado (as linhas saíam empilhadas na mesma posição na exportação
+    // de PDF, apesar de renderizar certinho no browser). <text> simples por linha é o caminho que o
+    // svg2pdf já processa bem (mesma estrutura usada por cota/título/outras anotações).
     const lines = ann.text.split('\n')
-    const startEm = BASELINE_OFFSET_EM - ((lines.length - 1) * LINE_HEIGHT_EM) / 2
+    const lineHeight = ann.size * LINE_HEIGHT_EM
+    const baselineOffset = ann.size * BASELINE_OFFSET_EM
+    const startY = baselineOffset - ((lines.length - 1) * lineHeight) / 2
     const maxLen = Math.max(1, ...lines.map((l) => l.length))
     const halfW = (ann.size * AVG_CHAR_WIDTH_EM * maxLen) / 2 + ann.size * 0.15
     const halfH = (ann.size * ((lines.length - 1) * LINE_HEIGHT_EM + 1)) / 2
@@ -70,13 +76,11 @@ export function AnnotationView({ ann, index, selected, onPointerDownPrimary, onP
         {/* Alvo de clique invisível cobrindo todo o bloco — sem isso só as letras em si (não as
             margens/entrelinhas) receberiam clique, igual ao motivo do hit-rect de grupo existir. */}
         <rect data-role="hit" x={-halfW} y={-halfH - 1} width={halfW * 2} height={halfH * 2 + 2} fill="transparent" style={{ cursor: 'pointer' }} onPointerDown={onPointerDownPrimary} onDoubleClick={onDoubleClick} />
-        <text textAnchor="middle" fontSize={ann.size} fontWeight={500} fontFamily={FONT} fill={col} style={{ pointerEvents: 'none' }}>
-          {lines.map((line, i) => (
-            <tspan key={i} x={0} dy={`${i === 0 ? startEm : LINE_HEIGHT_EM}em`}>
+        {lines.map((line, i) => (
+          <text key={i} x={0} y={startY + i * lineHeight} textAnchor="middle" fontSize={ann.size} fontWeight="normal" fontFamily={FONT} fill={col} style={{ pointerEvents: 'none' }}>
               {line || ' '}
-            </tspan>
-          ))}
-        </text>
+          </text>
+        ))}
         {selected && (
           <>
             <rect
@@ -126,7 +130,7 @@ export function AnnotationView({ ann, index, selected, onPointerDownPrimary, onP
           onPointerDown={onPointerDownPrimary}
         />
         <circle cx={ann.x1} cy={ann.y} r={0.9} fill={col} />
-        <text x={ann.x1 - 2} y={ann.y} fill={col} fontSize={2.8} fontFamily={FONT} fontWeight={600} textAnchor="end" dominantBaseline="central">
+        <text x={ann.x1 - 2} y={ann.y} fill={col} fontSize={2.8} fontFamily={FONT} fontWeight="bold" textAnchor="end" dominantBaseline="central">
           {ann.text}
         </text>
       </g>
@@ -162,7 +166,7 @@ export function AnnotationView({ ann, index, selected, onPointerDownPrimary, onP
         <line key={i} x1={c.x} y1={c.y} x2={targetPos.x} y2={targetPos.y} stroke={col} strokeWidth={0.3} vectorEffect="non-scaling-stroke" />
       ))}
       <circle cx={targetPos.x} cy={targetPos.y} r={1} fill={col} style={{ cursor: 'pointer' }} onPointerDown={onPointerDownSecondary} />
-      <text x={targetPos.x + 1.4} y={targetPos.y} fill={col} fontSize={2.8} fontFamily={FONT} fontWeight={600} dominantBaseline="central">
+      <text x={targetPos.x + 1.4} y={targetPos.y} fill={col} fontSize={2.8} fontFamily={FONT} fontWeight="bold" dominantBaseline="central">
         {ann.text}
       </text>
     </g>

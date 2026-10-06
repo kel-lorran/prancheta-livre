@@ -33,7 +33,7 @@ export function TitleBlock({ sheet, project, sheetNumber, sheetTotal, onEditFiel
     <g>
       <line x1={0} y1={y} x2={sheet.w} y2={y} stroke="var(--ink)" strokeWidth={0.4} vectorEffect="non-scaling-stroke" />
 
-      <text x={leftX + 3} y={y + 6.5} fill="var(--ink)" fontSize={3.6} fontWeight={600} fontFamily={FONT}>
+      <text x={leftX + 3} y={y + 6.5} fill="var(--ink)" fontSize={3.6} fontWeight="bold" fontFamily={FONT}>
         {project.name || 'Projeto sem nome'}
       </text>
       <text
@@ -54,7 +54,7 @@ export function TitleBlock({ sheet, project, sheetNumber, sheetTotal, onEditFiel
           <g key={cell.label}>
             <line x1={cx} y1={y} x2={cx} y2={sheet.h} stroke="var(--ink)" strokeWidth={0.25} vectorEffect="non-scaling-stroke" />
             <line x1={cx} y1={y + 6.5} x2={cx + CELL_W} y2={y + 6.5} stroke="var(--ink)" strokeWidth={0.2} vectorEffect="non-scaling-stroke" />
-            <text x={cx + CELL_W / 2} y={y + 4.6} fill="var(--muted)" fontSize={1.9} fontFamily={FONT} fontWeight={600} textAnchor="middle" letterSpacing="0.03em">
+            <text x={cx + CELL_W / 2} y={y + 4.6} fill="var(--muted)" fontSize={1.9} fontFamily={FONT} fontWeight="bold" textAnchor="middle" letterSpacing="0.03em">
               {cell.label}
             </text>
             <text
@@ -63,7 +63,7 @@ export function TitleBlock({ sheet, project, sheetNumber, sheetTotal, onEditFiel
               fill="var(--ink)"
               fontSize={2.6}
               fontFamily={FONT}
-              fontWeight={500}
+              fontWeight="normal"
               textAnchor="middle"
               style={cell.onClick ? { cursor: 'pointer' } : undefined}
               onClick={cell.onClick}
