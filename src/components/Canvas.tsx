@@ -46,6 +46,7 @@ export function Canvas() {
   const canvasWrapRef = useRef<HTMLDivElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const projectFileInputRef = useRef<HTMLInputElement>(null)
+  const pasteTargetRef = useRef<HTMLDivElement>(null)
   const dragRef = useRef<DragHandle | null>(null)
   const suppressClickRef = useRef(false)
   const warnTimerRef = useRef<number | undefined>(undefined)
@@ -351,25 +352,44 @@ export function Canvas() {
   }, [])
 
   // ---------------- colar imagem da área de transferência (Ctrl+V fora de um campo de texto) ----------------
+  // Navegadores só disparam o evento 'paste' de verdade quando o foco está num alvo editável —
+  // numa <svg>/<body> sem nada focado, Ctrl+V (e principalmente o Win+V do Windows, que entrega o
+  // colar de um jeito mais particular) simplesmente não gera o evento. Por isso mantém esse div
+  // invisível, contentEditable, sempre com foco (exceto quando um campo de verdade — prompt,
+  // input do título etc. — está em uso), só pra servir de alvo real pro paste cair.
   useEffect(() => {
-    function onPaste(e: ClipboardEvent) {
+    const el = pasteTargetRef.current
+    el?.focus({ preventScroll: true })
+    function regainFocus() {
       const tag = (document.activeElement as HTMLElement | null)?.tagName
-      if (tag === 'INPUT' || tag === 'SELECT' || tag === 'TEXTAREA') return
-      const items = e.clipboardData?.items
-      if (!items) return
-      for (const item of items) {
-        if (!item.type.startsWith('image/')) continue
-        const file = item.getAsFile()
-        if (!file) continue
-        e.preventDefault()
-        importImageFile(file)
-        return
-      }
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return
+      el?.focus({ preventScroll: true })
     }
-    window.addEventListener('paste', onPaste)
-    return () => window.removeEventListener('paste', onPaste)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // 'mouseup' cobre clicar fora de um campo; 'focusout' (com um tick de atraso, pra deixar o
+    // próximo elemento focado de verdade assentar antes de checar) cobre fechar um prompt via
+    // teclado (Enter/Esc), que não dispara mouseup nenhum.
+    function onFocusOut() {
+      window.setTimeout(regainFocus, 0)
+    }
+    window.addEventListener('mouseup', regainFocus)
+    window.addEventListener('focusout', onFocusOut)
+    return () => {
+      window.removeEventListener('mouseup', regainFocus)
+      window.removeEventListener('focusout', onFocusOut)
+    }
   }, [])
+  function handlePasteImage(e: React.ClipboardEvent<HTMLDivElement>) {
+    e.preventDefault()
+    const items = e.clipboardData?.items
+    if (!items) return
+    for (const item of items) {
+      if (!item.type.startsWith('image/')) continue
+      const file = item.getAsFile()
+      if (!file) continue
+      importImageFile(file)
+      return
+    }
+  }
 
   function deleteSelectionLive() {
     const state = useProjectStore.getState()
@@ -1261,6 +1281,18 @@ export function Canvas() {
       />
       <input ref={fileInputRef} type="file" accept="image/png,image/jpeg" hidden onChange={handleFileChange} />
       <input ref={projectFileInputRef} type="file" accept=".zip" hidden onChange={handleProjectFileChange} />
+      {/* Invisível — só existe pra dar um alvo editável de verdade ao Ctrl+V/Win+V, senão o
+          navegador não dispara o evento 'paste' com nada focado (ver efeito acima). */}
+      <div
+        ref={pasteTargetRef}
+        data-testid="paste-target"
+        contentEditable
+        suppressContentEditableWarning
+        tabIndex={-1}
+        aria-hidden="true"
+        style={{ position: 'fixed', top: 0, left: 0, width: 1, height: 1, opacity: 0, overflow: 'hidden', pointerEvents: 'none' }}
+        onPaste={handlePasteImage}
+      />
 
       <div id="canvasWrap" ref={canvasWrapRef} className={tool !== 'select' ? 'tool-draw' : ''}>
         <svg id="stage" ref={svgRef} onPointerDown={onStagePointerDown} onClick={onStageClick} onContextMenu={(e) => e.preventDefault()}>
