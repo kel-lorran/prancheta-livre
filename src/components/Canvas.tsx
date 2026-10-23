@@ -46,7 +46,6 @@ export function Canvas() {
   const canvasWrapRef = useRef<HTMLDivElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const projectFileInputRef = useRef<HTMLInputElement>(null)
-  const pasteTargetRef = useRef<HTMLDivElement>(null)
   const dragRef = useRef<DragHandle | null>(null)
   const suppressClickRef = useRef(false)
   const warnTimerRef = useRef<number | undefined>(undefined)
@@ -351,44 +350,37 @@ export function Canvas() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  // ---------------- colar imagem da área de transferência (Ctrl+V fora de um campo de texto) ----------------
-  // Navegadores só disparam o evento 'paste' de verdade quando o foco está num alvo editável —
-  // numa <svg>/<body> sem nada focado, Ctrl+V (e principalmente o Win+V do Windows, que entrega o
-  // colar de um jeito mais particular) simplesmente não gera o evento. Por isso mantém esse div
-  // invisível, contentEditable, sempre com foco (exceto quando um campo de verdade — prompt,
-  // input do título etc. — está em uso), só pra servir de alvo real pro paste cair.
-  useEffect(() => {
-    const el = pasteTargetRef.current
-    el?.focus({ preventScroll: true })
-    function regainFocus() {
-      const tag = (document.activeElement as HTMLElement | null)?.tagName
-      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return
-      el?.focus({ preventScroll: true })
-    }
-    // 'mouseup' cobre clicar fora de um campo; 'focusout' (com um tick de atraso, pra deixar o
-    // próximo elemento focado de verdade assentar antes de checar) cobre fechar um prompt via
-    // teclado (Enter/Esc), que não dispara mouseup nenhum.
-    function onFocusOut() {
-      window.setTimeout(regainFocus, 0)
-    }
-    window.addEventListener('mouseup', regainFocus)
-    window.addEventListener('focusout', onFocusOut)
-    return () => {
-      window.removeEventListener('mouseup', regainFocus)
-      window.removeEventListener('focusout', onFocusOut)
-    }
-  }, [])
-  function handlePasteImage(e: React.ClipboardEvent<HTMLDivElement>) {
-    e.preventDefault()
-    const items = e.clipboardData?.items
-    if (!items) return
-    for (const item of items) {
-      if (!item.type.startsWith('image/')) continue
-      const file = item.getAsFile()
-      if (!file) continue
-      importImageFile(file)
+  // ---------------- colar imagem da área de transferência ----------------
+  // O evento passivo 'paste' do navegador se mostrou pouco confiável (não dispara em vários
+  // cenários reais — Win+V em especial — mesmo com um alvo editável focado). A Clipboard API
+  // assíncrona, acionada direto por um clique, é o caminho que de fato funciona de forma
+  // consistente: não depende de foco nem de qual gesto o SO usou pra entregar o paste.
+  async function handlePasteFromClipboard() {
+    const state = useProjectStore.getState()
+    const target = currentImportTarget(state.sheets, state.selection, state.openGroupId)
+    if (!target) {
+      warn('Selecione uma prancha (ou entre num grupo) antes de colar uma imagem.')
       return
     }
+    if (!navigator.clipboard?.read) {
+      warn('Esse navegador não permite colar imagem assim — use "Importar imagem".')
+      return
+    }
+    let items: ClipboardItems
+    try {
+      items = await navigator.clipboard.read()
+    } catch {
+      warn('Não consegui acessar a área de transferência — permita o acesso e tente de novo.')
+      return
+    }
+    for (const item of items) {
+      const type = item.types.find((t) => t.startsWith('image/'))
+      if (!type) continue
+      const blob = await item.getType(type)
+      importImageFile(new File([blob], 'colado', { type }))
+      return
+    }
+    warn('Não encontrei nenhuma imagem na área de transferência.')
   }
 
   function deleteSelectionLive() {
@@ -1268,6 +1260,7 @@ export function Canvas() {
       <Toolbar
         onAddSheet={handleAddSheet}
         onImportClick={handleImportClick}
+        onPasteClick={handlePasteFromClipboard}
         canImport={canImport}
         onFit={handleFit}
         onZoomIn={handleZoomIn}
@@ -1281,18 +1274,6 @@ export function Canvas() {
       />
       <input ref={fileInputRef} type="file" accept="image/png,image/jpeg" hidden onChange={handleFileChange} />
       <input ref={projectFileInputRef} type="file" accept=".zip" hidden onChange={handleProjectFileChange} />
-      {/* Invisível — só existe pra dar um alvo editável de verdade ao Ctrl+V/Win+V, senão o
-          navegador não dispara o evento 'paste' com nada focado (ver efeito acima). */}
-      <div
-        ref={pasteTargetRef}
-        data-testid="paste-target"
-        contentEditable
-        suppressContentEditableWarning
-        tabIndex={-1}
-        aria-hidden="true"
-        style={{ position: 'fixed', top: 0, left: 0, width: 1, height: 1, opacity: 0, overflow: 'hidden', pointerEvents: 'none' }}
-        onPaste={handlePasteImage}
-      />
 
       <div id="canvasWrap" ref={canvasWrapRef} className={tool !== 'select' ? 'tool-draw' : ''}>
         <svg id="stage" ref={svgRef} onPointerDown={onStagePointerDown} onClick={onStageClick} onContextMenu={(e) => e.preventDefault()}>
