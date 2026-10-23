@@ -6,7 +6,7 @@ import { formatDimText, perpendicularOffset } from '../lib/dimGeometry'
 import { loadPersistedProject, saveProject } from '../lib/persistence'
 import { annotationWorldBoxes, boxContains, boxesIntersect, dimWorldBoxes, groupWorldBox, type Box } from '../lib/marquee'
 import { computeAnchoredResize } from '../lib/resizeGeometry'
-import type { DraftTool, ImageGroup, Orientation, Point, ProjectInfo, Sheet, SheetImage, SheetSizeKey } from '../types'
+import type { DraftTool, ImageGroup, Orientation, Point, ProjectInfo, Selection, Sheet, SheetImage, SheetSizeKey } from '../types'
 import { SheetView, type Corner } from './SheetView'
 import { SheetTab } from './SheetTab'
 import { CalibratePrompt } from './CalibratePrompt'
@@ -65,7 +65,6 @@ export function Canvas() {
   const view = useProjectStore((s) => s.view)
 
   const setSheetPos = useProjectStore((s) => s.setSheetPos)
-  const importImage = useProjectStore((s) => s.importImage)
   const setGroupRect = useProjectStore((s) => s.setGroupRect)
   const setMemberRect = useProjectStore((s) => s.setMemberRect)
   const toggleMemberLock = useProjectStore((s) => s.toggleMemberLock)
@@ -348,6 +347,27 @@ export function Canvas() {
     }
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  // ---------------- colar imagem da área de transferência (Ctrl+V fora de um campo de texto) ----------------
+  useEffect(() => {
+    function onPaste(e: ClipboardEvent) {
+      const tag = (document.activeElement as HTMLElement | null)?.tagName
+      if (tag === 'INPUT' || tag === 'SELECT' || tag === 'TEXTAREA') return
+      const items = e.clipboardData?.items
+      if (!items) return
+      for (const item of items) {
+        if (!item.type.startsWith('image/')) continue
+        const file = item.getAsFile()
+        if (!file) continue
+        e.preventDefault()
+        importImageFile(file)
+        return
+      }
+    }
+    window.addEventListener('paste', onPaste)
+    return () => window.removeEventListener('paste', onPaste)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
@@ -1088,38 +1108,42 @@ export function Canvas() {
     const sheet = useProjectStore.getState().addSheet(size, orientation)
     setView(focusOnSheetView(sheet, getRect()))
   }
-  function currentImportTarget(): { sheet: Sheet; groupId: string | null } | null {
-    if (openGroupId) {
-      const found = findGroupById(sheets, openGroupId)
-      if (found) return { sheet: found.sheet, groupId: openGroupId }
+  function currentImportTarget(sheetsArg: Sheet[], selectionArg: Selection, openGroupIdArg: string | null): { sheet: Sheet; groupId: string | null } | null {
+    if (openGroupIdArg) {
+      const found = findGroupById(sheetsArg, openGroupIdArg)
+      if (found) return { sheet: found.sheet, groupId: openGroupIdArg }
     }
-    if (selection.type === 'sheet') {
-      const sheet = sheets.find((s) => s.id === selection.id)
+    if (selectionArg.type === 'sheet') {
+      const sheet = sheetsArg.find((s) => s.id === selectionArg.id)
       if (sheet) return { sheet, groupId: null }
     }
     // Grupo/membro/cota/anotação selecionados, mas não "entrados" — ainda dá pra importar como
     // um grupo novo na mesma prancha (só entrar no grupo via duplo clique/Enter mira o import nele).
-    if (selection.type === 'group') {
-      const found = findGroupById(sheets, selection.id)
+    if (selectionArg.type === 'group') {
+      const found = findGroupById(sheetsArg, selectionArg.id)
       if (found) return { sheet: found.sheet, groupId: null }
     }
-    if (selection.type === 'member') {
-      const found = findMemberById(sheets, selection.id)
+    if (selectionArg.type === 'member') {
+      const found = findMemberById(sheetsArg, selectionArg.id)
       if (found) return { sheet: found.sheet, groupId: null }
     }
     return null
   }
   function handleImportClick() {
-    if (!currentImportTarget()) return
+    if (!currentImportTarget(sheets, selection, openGroupId)) return
     fileInputRef.current?.click()
   }
-  function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const input = e.target
-    const file = input.files?.[0]
-    if (!file) return
-    const target = currentImportTarget()
+  /**
+   * Usado tanto pelo input de arquivo quanto por colar (Ctrl+V) uma imagem da área de
+   * transferência. Lê o alvo de importação do estado vivo da store (não dos hooks fechados no
+   * escopo do componente), porque o listener de paste fica registrado numa só vez (effect com
+   * deps vazias) e precisa continuar enxergando prancha/seleção atuais, não as do primeiro render.
+   */
+  function importImageFile(file: File) {
+    const state = useProjectStore.getState()
+    const target = currentImportTarget(state.sheets, state.selection, state.openGroupId)
     if (!target) {
-      input.value = ''
+      warn('Selecione uma prancha (ou entre num grupo) antes de importar uma imagem.')
       return
     }
     const { sheet, groupId } = target
@@ -1130,7 +1154,7 @@ export function Canvas() {
       img.onload = () => {
         let x: number, y: number, w: number, h: number
         if (groupId) {
-          const group = findGroupById(sheets, groupId)?.group
+          const group = findGroupById(state.sheets, groupId)?.group
           const maxW = group ? group.w * 0.6 : sheet.w * 0.4
           w = maxW
           h = (w * img.naturalHeight) / img.naturalWidth
@@ -1150,12 +1174,18 @@ export function Canvas() {
           x = (sheet.w - w) / 2 + cascade
           y = (sheet.h - h) / 2 + cascade
         }
-        importImage(sheet.id, groupId, { href, natW: img.naturalWidth, natH: img.naturalHeight, x, y, w, h })
+        useProjectStore.getState().importImage(sheet.id, groupId, { href, natW: img.naturalWidth, natH: img.naturalHeight, x, y, w, h })
       }
       img.src = href
     }
     reader.readAsDataURL(file)
+  }
+  function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const input = e.target
+    const file = input.files?.[0]
     input.value = ''
+    if (!file) return
+    importImageFile(file)
   }
   function handleFit() {
     setView(fitToContentView(sheets, getRect()))
@@ -1211,7 +1241,7 @@ export function Canvas() {
   }
 
   const zoomPercent = Math.round((view.zoom / 2.6) * 100)
-  const canImport = !!currentImportTarget()
+  const canImport = !!currentImportTarget(sheets, selection, openGroupId)
 
   return (
     <div id="app">

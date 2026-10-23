@@ -6,7 +6,7 @@ const SECTIONS: { title: string; rows: [string, string][] }[] = [
   {
     title: 'Fluxo básico',
     rows: [
-      ['Importar imagem', 'Cria um grupo novo (ou entra no grupo aberto)'],
+      ['Importar imagem', 'Cria um grupo novo (ou entra no grupo aberto) — ou cole uma imagem com Ctrl+V'],
       ['Calibrar (C)', 'Dois cliques + comprimento real — define a escala do grupo'],
       ['Cota (D)', 'Ortogonal ou alinhada — três cliques (dois pontos + afastamento)'],
       ['Texto', 'Rótulo centralizado — Enter quebra linha, Ctrl+Enter confirma. Alça de cima gira (Shift trava em 15°)'],

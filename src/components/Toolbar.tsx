@@ -170,7 +170,7 @@ export function Toolbar({
       <button className="primary" onClick={() => onAddSheet(sizeKey, orientation)}>
         + Prancha
       </button>
-      <button className="ghost" disabled={!canImport} title={canImport ? 'Importar imagem' : 'Selecione uma prancha (ou entre num grupo) antes de importar'} onClick={onImportClick}>
+      <button className="ghost" disabled={!canImport} title={canImport ? 'Importar imagem (ou cole uma com Ctrl+V)' : 'Selecione uma prancha (ou entre num grupo) antes de importar'} onClick={onImportClick}>
         Importar imagem
       </button>
 
